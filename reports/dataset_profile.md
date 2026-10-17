@@ -199,7 +199,7 @@ Nine datetime attributes were evaluated for parsing feasibility, format uniformi
 #### C. Cross-Stage Temporal Sequence
 
 - **Prescription vs. Appointment:** In 62,366 encounters (99.93%), `prescription_start_datetime` succeeds `appointment_start_datetime` (median lag: 28 minutes). In 5 encounters (0.01%), prescription preceded appointment start by up to 95 hours. In 39 encounters (0.06%), timestamps coincided exactly.
-- **Laboratory vs. Appointment:** In 17,554 cases (97.37%), laboratory specimen collection commenced after appointment check-in. However, in **457 cases (2.53%)**, `lab_start_datetime` preceded `appointment_start_datetime`. This is common in real-world clinical care where patients undergo fasting blood draws prior to physician consultation on the same morning.
+- **Laboratory vs. Appointment:** In 17,554 cases (97.37%), laboratory specimen collection commenced after appointment check-in. However, in **457 cases (2.53%)**, `lab_start_datetime` preceded `appointment_start_datetime` in the synthetic source records.
 
 ---
 

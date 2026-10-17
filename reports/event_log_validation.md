@@ -113,7 +113,7 @@ Independent recomputation confirms exact reconciliation with the figures documen
   - `Imaging Start` as first event: 282 cases
   - `Laboratory Start` as first event: 131 cases
   - `Prescription Order` as first event: 5 cases
-- **Clinical Validation:** In real-world outpatient care, walk-in patients or patients scheduled for morning fasting blood draws / routine chest X-rays frequently undergo diagnostic acquisition prior to entering the physician consultation room. Preserving these genuine timestamps produces an authentic representation of outpatient operational variations.
+- **Data Preservation Rationale:** In the synthetic event log, diagnostic start timestamps precede appointment check-in in 418 cases. Preserving these recorded timestamps maintains empirical fidelity to the source dataset without forcing artificial reordering.
 
 ---
 
@@ -138,8 +138,8 @@ Independent recomputation confirms exact reconciliation with the figures documen
   - 1 `Prescription Order` event
   - 1 `Imaging Start` event
   - 1 `Imaging End` event
-- **Empirical Clinical Evidence:** Inspection of raw records confirmed that this maximum-length encounter was an obstetrics/gynecology high-risk maternal episode featuring Doppler Fetal ultrasound imaging and 26 distinct laboratory test orders (including Complete Blood Count, Urine R/E, Liver Function Tests, CRP, and multiple Urine Culture & Sensitivity panels). All 26 tests had distinct order IDs. Culture tests completed 3 days later, matching standard 72-hour microbiological incubation.
-- **Conclusion:** The maximum trace length is **clinically authentic and correctly preserved**, not an extraction artifact.
+- **Empirical Record Evidence:** Inspection of raw records confirmed that this maximum-length encounter contains 1 ultrasound imaging order and 26 distinct laboratory test orders (including blood counts, metabolic panels, and culture tests with distinct order IDs in the synthetic source).
+- **Conclusion:** The maximum trace length is **empirically verified and correctly preserved from source records**, not an extraction artifact.
 
 ---
 

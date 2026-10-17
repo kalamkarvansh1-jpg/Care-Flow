@@ -1,0 +1,6 @@
+CareFlow: Inductive Miner Process Tree Representation
+Target: Exploratory analysis of synthetic clinical pathway dataset
+Cases: 49,912 | Events: 142,876
+============================================================
+
++( 'Appointment Start', X( tau, +( X( tau, *( 'Laboratory End', tau ) ), X( tau, *( 'Laboratory Start', tau ) ), X( tau, *( 'Pharmacy End', tau ) ), X( tau, *( 'Pharmacy Start', tau ) ), *( 'Prescription Order', tau ), X( tau, *( ->( 'Imaging Start', X( tau, *( 'Imaging End', tau ) ) ), tau ) ) ) ) )

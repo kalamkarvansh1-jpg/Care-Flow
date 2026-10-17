@@ -46,7 +46,7 @@ The data cleaning and event log transformation pipeline was executed in non-inte
 | `flag_prescription_inverted` | 52 rows | Retained with flag | Point event at start | Prescription end precedes start datetime (1 to 4 days earlier). Handled as point order event. |
 | `flag_prescription_start_null` | 12 rows | Retained with flag | Excluded from `Prescription Order` | Start timestamp is null. Cannot generate point event without guessing timestamp. |
 | `flag_imaging_end_null` | 10 rows | Retained with flag | Excluded from `Imaging End` | Exam initiated but completion timestamp omitted. Start event retained. |
-| `flag_pre_appointment_lab` | 457 rows | Retained with flag | Retained with true time | Pre-consultation diagnostic collection (fasting morning lab draws prior to doctor visit). |
+| `flag_pre_appointment_lab` | 457 rows | Retained with flag | Retained with true time | Diagnostic collection where laboratory start timestamp precedes appointment check-in in synthetic data. |
 
 ---
 
