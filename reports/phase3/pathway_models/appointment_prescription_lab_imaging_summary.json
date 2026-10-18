@@ -1,0 +1,42 @@
+{
+  "workflow_category": "Appointment \u2192 Prescription \u2192 Lab + Imaging",
+  "sample_size_tier": "Standard (>= 100 cases)",
+  "discovery_cases": 274,
+  "holdout_cases": 69,
+  "discovery_events": 1594,
+  "holdout_events": 395,
+  "model_structure": {
+    "places": 17,
+    "transitions_total": 20,
+    "transitions_visible": 6,
+    "transitions_silent": 14,
+    "arcs": 46,
+    "is_workflow_net": true,
+    "formal_soundness_verification": "Unverified / Unavailable (WOFLAN reachability state explosion for 17 places / 20 transitions without PuLP solver)",
+    "construction_soundness_expectation": "Guaranteed Sound (by Inductive Miner construction)"
+  },
+  "holdout_quality": {
+    "log_fitness": 1.0,
+    "average_trace_fitness": 1.0,
+    "percentage_fit_traces": 100.0,
+    "precision": 0.531,
+    "precision_method": "Full Holdout (69 cases, 395 events)",
+    "generalization": 0.6072,
+    "simplicity": 0.6727
+  },
+  "variant_analysis": {
+    "discovery_variants": 36,
+    "holdout_variants": 20,
+    "novel_variants": 8,
+    "holdout_cases_matching_discovery": 60,
+    "variant_coverage_pct": 86.96,
+    "novel_cases_count": 9,
+    "novel_cases_pct": 13.04,
+    "estimated_failing_cases": 0
+  },
+  "artifacts": {
+    "pnml": "appointment_prescription_lab_imaging.pnml",
+    "dot": "appointment_prescription_lab_imaging.dot",
+    "png": "appointment_prescription_lab_imaging.png"
+  }
+}

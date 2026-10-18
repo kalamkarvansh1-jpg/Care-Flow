@@ -1,0 +1,38 @@
+digraph PetriNet {
+  rankdir=LR;
+  node [fontname=Helvetica, fontsize=10];
+  "p_5" [shape=circle, color="#37474F", label="p_5"];
+  "p_7" [shape=circle, color="#37474F", label="p_7"];
+  "source" [shape=circle, color="#2E7D32", label="source\n[Start]"];
+  "sink" [shape=circle, color="#C62828", label="sink\n[End]"];
+  "p_6" [shape=circle, color="#37474F", label="p_6"];
+  "p_8" [shape=circle, color="#37474F", label="p_8"];
+  "p_9" [shape=circle, color="#37474F", label="p_9"];
+  "p_10" [shape=circle, color="#37474F", label="p_10"];
+  "5af866be-7c71-4202-bfff-4a2c8a7db42e" [shape=box, style="rounded,filled", fillcolor="#BBDEFB", color="#1976D2", label="Appointment Start"];
+  "init_loop_6" [shape=box, style=filled, fillcolor="#757575", width=0.15, height=0.3, label=""];
+  "skip_9" [shape=box, style=filled, fillcolor="#757575", width=0.15, height=0.3, label=""];
+  "tau_1" [shape=box, style=filled, fillcolor="#757575", width=0.15, height=0.3, label=""];
+  "tauJoin_4" [shape=box, style=filled, fillcolor="#757575", width=0.15, height=0.3, label=""];
+  "skip_5" [shape=box, style=filled, fillcolor="#757575", width=0.15, height=0.3, label=""];
+  "83b7627a-9df7-47a3-85b3-906c79e771df" [shape=box, style="rounded,filled", fillcolor="#BBDEFB", color="#1976D2", label="Prescription Order"];
+  "skip_8" [shape=box, style=filled, fillcolor="#757575", width=0.15, height=0.3, label=""];
+  "source" -> "tau_1";
+  "tau_1" -> "p_5";
+  "83b7627a-9df7-47a3-85b3-906c79e771df" -> "p_10";
+  "init_loop_6" -> "p_9";
+  "skip_5" -> "p_8";
+  "p_10" -> "skip_8";
+  "p_7" -> "skip_5";
+  "skip_9" -> "p_8";
+  "skip_8" -> "p_9";
+  "p_6" -> "tauJoin_4";
+  "p_5" -> "5af866be-7c71-4202-bfff-4a2c8a7db42e";
+  "5af866be-7c71-4202-bfff-4a2c8a7db42e" -> "p_6";
+  "p_8" -> "tauJoin_4";
+  "p_9" -> "83b7627a-9df7-47a3-85b3-906c79e771df";
+  "p_10" -> "skip_9";
+  "tauJoin_4" -> "sink";
+  "p_7" -> "init_loop_6";
+  "tau_1" -> "p_7";
+}

@@ -1,0 +1,42 @@
+{
+  "workflow_category": "Appointment \u2192 Prescription \u2192 Imaging",
+  "sample_size_tier": "Standard (>= 100 cases)",
+  "discovery_cases": 3026,
+  "holdout_cases": 757,
+  "discovery_events": 12241,
+  "holdout_events": 3089,
+  "model_structure": {
+    "places": 12,
+    "transitions_total": 12,
+    "transitions_visible": 4,
+    "transitions_silent": 8,
+    "arcs": 30,
+    "is_workflow_net": true,
+    "formal_soundness_verification": "Verified Sound (WOFLAN passed: True)",
+    "construction_soundness_expectation": "Guaranteed Sound (by Inductive Miner construction)"
+  },
+  "holdout_quality": {
+    "log_fitness": 1.0,
+    "average_trace_fitness": 1.0,
+    "percentage_fit_traces": 100.0,
+    "precision": 0.6528,
+    "precision_method": "Full Holdout (757 cases, 3,089 events)",
+    "generalization": 0.8605,
+    "simplicity": 0.6667
+  },
+  "variant_analysis": {
+    "discovery_variants": 27,
+    "holdout_variants": 19,
+    "novel_variants": 4,
+    "holdout_cases_matching_discovery": 752,
+    "variant_coverage_pct": 99.34,
+    "novel_cases_count": 5,
+    "novel_cases_pct": 0.66,
+    "estimated_failing_cases": 0
+  },
+  "artifacts": {
+    "pnml": "appointment_prescription_imaging.pnml",
+    "dot": "appointment_prescription_imaging.dot",
+    "png": "appointment_prescription_imaging.png"
+  }
+}

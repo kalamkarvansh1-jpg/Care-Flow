@@ -1,0 +1,42 @@
+{
+  "workflow_category": "Appointment \u2192 Prescription",
+  "sample_size_tier": "Standard (>= 100 cases)",
+  "discovery_cases": 31726,
+  "holdout_cases": 7932,
+  "discovery_events": 63819,
+  "holdout_events": 15952,
+  "model_structure": {
+    "places": 8,
+    "transitions_total": 8,
+    "transitions_visible": 2,
+    "transitions_silent": 6,
+    "arcs": 18,
+    "is_workflow_net": true,
+    "formal_soundness_verification": "Verified Sound (WOFLAN passed: True)",
+    "construction_soundness_expectation": "Guaranteed Sound (by Inductive Miner construction)"
+  },
+  "holdout_quality": {
+    "log_fitness": 1.0,
+    "average_trace_fitness": 1.0,
+    "percentage_fit_traces": 100.0,
+    "precision": 0.6682,
+    "precision_method": "Deterministic Sample (1,000 cases, 2,014 events, seed 42)",
+    "generalization": 0.8533,
+    "simplicity": 0.8
+  },
+  "variant_analysis": {
+    "discovery_variants": 5,
+    "holdout_variants": 4,
+    "novel_variants": 0,
+    "holdout_cases_matching_discovery": 7932,
+    "variant_coverage_pct": 100.0,
+    "novel_cases_count": 0,
+    "novel_cases_pct": 0.0,
+    "estimated_failing_cases": 0
+  },
+  "artifacts": {
+    "pnml": "appointment_prescription.pnml",
+    "dot": "appointment_prescription.dot",
+    "png": "appointment_prescription.png"
+  }
+}

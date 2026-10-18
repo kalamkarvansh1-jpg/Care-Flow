@@ -1,0 +1,42 @@
+{
+  "workflow_category": "Ambiguous Source Flow (Multi-Category Encounter)",
+  "sample_size_tier": "Standard (>= 100 cases)",
+  "discovery_cases": 985,
+  "holdout_cases": 246,
+  "discovery_events": 11492,
+  "holdout_events": 2988,
+  "model_structure": {
+    "places": 29,
+    "transitions_total": 37,
+    "transitions_visible": 8,
+    "transitions_silent": 29,
+    "arcs": 82,
+    "is_workflow_net": true,
+    "formal_soundness_verification": "Unverified / Unavailable (WOFLAN reachability state explosion for 29 places / 37 transitions without PuLP solver)",
+    "construction_soundness_expectation": "Guaranteed Sound (by Inductive Miner construction)"
+  },
+  "holdout_quality": {
+    "log_fitness": 0.9998,
+    "average_trace_fitness": 0.9998,
+    "percentage_fit_traces": 99.59,
+    "precision": 0.4125,
+    "precision_method": "Full Holdout (246 cases, 2,988 events)",
+    "generalization": 0.7574,
+    "simplicity": 0.6735
+  },
+  "variant_analysis": {
+    "discovery_variants": 270,
+    "holdout_variants": 120,
+    "novel_variants": 47,
+    "holdout_cases_matching_discovery": 197,
+    "variant_coverage_pct": 80.08,
+    "novel_cases_count": 49,
+    "novel_cases_pct": 19.92,
+    "estimated_failing_cases": 1
+  },
+  "artifacts": {
+    "pnml": "ambiguous_multi_category.pnml",
+    "dot": "ambiguous_multi_category.dot",
+    "png": "ambiguous_multi_category.png"
+  }
+}
