@@ -16,10 +16,10 @@ This Phase 3 Step 6 study establishes a reproducible temporal performance baseli
 - **Cohort Elapsed Duration:** The median case-level elapsed duration is **36.0 minutes** (0.60 hours; IQR: 14.0 – 80.0 min), with an arithmetic mean of **287.9 minutes** (4.80 hours). The 90th percentile is **196.0 minutes** (3.27 hours), and the 95th percentile is **349.0 minutes** (5.82 hours). The arithmetic mean is heavily skewed by a small fraction (2.52%) of multiday outpatient encounters (maximum: 695,643.0 min / 483.1 days in synthetic logging).
 - **Consecutive-Event Transitions:** A total of **92,964 transitions** occur across 44 distinct activity pairs. Exactly **15,175 transitions (16.32%)** share identical recorded minute timestamps ($\\Delta t = 0$), while **77,789 transitions (83.68%)** exhibit strictly positive durations ($\\Delta t > 0$).
 - **Primary Candidate Bottlenecks:**
-  1. **Radiology Referral Queue (`Prescription Order -> Imaging Start`):** Affects **2,968 cases** (5.95% of cohort) with a median lead time of **35.0 minutes**, an arithmetic mean of **410.9 minutes** (6.85 hours), and a 90th percentile of **104.0 minutes** (1.73 hours). Represents a high-volume outpatient scheduling handoff.
-  2. **Pre-Consultation Diagnostic Imaging (`Appointment Start -> Imaging Start`):** Affects **1,588 cases** (3.18% of cohort) with a median lead time of **47.0 minutes**, an arithmetic mean of **71.9 minutes** (1.20 hours), and a 90th percentile of **172.0 minutes** (2.87 hours).
-  3. **Analytical Laboratory Specimen Turnaround (`Laboratory Start -> Laboratory End`):** Affects **4,363 cases** (8.74% of cohort) with a median turnaround time of **81.0 minutes** (1.35 hours), mean of **285.9 minutes** (4.76 hours), and a 90th percentile of **367.6 minutes** (6.13 hours). This reflects specimen incubation/analytical turnaround, not patient queue delay.
-  4. **Cross-Modality Transfer (`Laboratory End -> Imaging Start`):** Exhibits the highest median duration among supported transitions (**191.0 minutes** / 3.18 hours; mean **3,443.8 minutes** / 57.40 hours; P90 **16,846.0 minutes** / 11.7 days), but affects a localized subset of **171 cases** (0.34% of cohort) involving multiday outpatient restaging.
+  1. **Radiology Referral Queue (`Prescription Order -> Imaging Start`):** Affects **2,968 cases** (5.95% of cohort) with a median lead time of **35.0 minutes**, an arithmetic mean of **410.9 minutes** (6.85 hours), and a 90th percentile of **108.2 minutes** (1.80 hours). Represents a high-volume outpatient scheduling handoff.
+  2. **Pre-Consultation Diagnostic Imaging (`Appointment Start -> Imaging Start`):** Affects **1,588 cases** (3.18% of cohort) with a median lead time of **47.0 minutes**, an arithmetic mean of **71.9 minutes** (1.20 hours), and a 90th percentile of **181.6 minutes** (3.03 hours).
+  3. **Analytical Laboratory Specimen Turnaround (`Laboratory Start -> Laboratory End`):** Affects **4,363 cases** (8.74% of cohort) with a median turnaround time of **81.0 minutes** (1.35 hours), mean of **285.9 minutes** (4.76 hours), and a 90th percentile of **230.0 minutes** (3.83 hours). This reflects specimen incubation/analytical turnaround, not patient queue delay.
+  4. **Cross-Modality Transfer (`Laboratory End -> Imaging Start`):** Exhibits the highest median duration among supported transitions (**191.0 minutes** / 3.18 hours; mean **3,443.8 minutes** / 57.40 hours; P90 **12,916.0 minutes** / 8.97 days), but affects a localized subset of **171 cases** (0.34% of cohort) involving multiday outpatient restaging.
 - **Timestamp Tie Concentration:** Zero-minute intervals concentrate almost exclusively in same-activity batch events: **11,309** `Laboratory Start -> Laboratory Start` (99.30% tied, simultaneous test orders) and **2,842** `Laboratory End -> Laboratory End` (34.48% tied). Cross-stage clinical transitions are highly robust, exhibiting <0.3% timestamp ties.
 - **Activity Start/End Pairing Structure:**
   - **Imaging:** **5,217 cases (98.01%)** exhibit unambiguous 1:1 pairing with a median exam duration of **3.0 minutes** (IQR: 1.0 – 5.0 min; 9.79% zero-minute durations).
@@ -264,8 +264,8 @@ To avoid misinterpreting high arithmetic means or isolated percentiles as operat
 
 | Rank | Source Activity | Destination Activity | Affected Cases | Cohort % | Transitions | Median (m) | Mean (m) | P90 (m) | Zero % | Tie Sensitivity | Analytical Category | Operational Finding |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- | :--- |
-| **1** | `Appointment Start` | `Imaging Start` | 1,588 | 3.18% | 1,588 | 47.0 | 71.9 | 181.6 | 0.13% | Low | Potential Operational Bottleneck (Pre-Consult Imaging) | Substantial pre-consultation imaging queue latency (med 47m, mean 1.2h, p90 172m). Affects 1,588 cases. |
-| **2** | `Prescription Order` | `Imaging Start` | 2,968 | 5.95% | 2,969 | 35.0 | 410.9 | 108.2 | 0.27% | Low | Potential Operational Bottleneck (Referral Latency) | Referral queue latency to radiology (med 35m, mean 6.8h, p90 104m). Heavy volume (2,968 cases). |
+| **1** | `Appointment Start` | `Imaging Start` | 1,588 | 3.18% | 1,588 | 47.0 | 71.9 | 181.6 | 0.13% | Low | Potential Operational Bottleneck (Pre-Consult Imaging) | Substantial pre-consultation imaging queue latency (med 47m, mean 1.2h, p90 182m). Affects 1,588 cases. |
+| **2** | `Prescription Order` | `Imaging Start` | 2,968 | 5.95% | 2,969 | 35.0 | 410.9 | 108.2 | 0.27% | Low | Potential Operational Bottleneck (Referral Latency) | Referral queue latency to radiology (med 35m, mean 6.8h, p90 108m). Heavy volume (2,968 cases). |
 | **3** | `Laboratory End` | `Imaging Start` | 171 | 0.34% | 171 | 191.0 | 3444.2 | 12916.0 | 2.34% | Moderate | Cross-Department Staging / Inter-Day Scheduling | High lead-time between lab completion and radiology suite (med 191m, mean 57.4h). Affects 171 cases. |
 | **4** | `Laboratory Start` | `Laboratory End` | 4,363 | 8.74% | 4,415 | 81.0 | 285.9 | 230.0 | 0.02% | Low | Clinical Service Time (Specimen Turnaround) | Analytical diagnostic processing & culture incubation latency. Highly supported (4,363 cases). |
 | **5** | `Laboratory End` | `Laboratory Start` | 53 | 0.11% | 59 | 80.0 | 187.5 | 344.6 | 0.00% | Low | Clinical Reflex Testing Latency | Reflex testing or secondary specimen redraw (med 80m, mean 3.1h). Affects 53 cases. |
@@ -284,20 +284,20 @@ To avoid misinterpreting high arithmetic means or isolated percentiles as operat
 
 #### Category A: Potential Process Bottlenecks Requiring Operational Investigation
 1. **Radiology Referral Queue (`Prescription Order -> Imaging Start`):**
-   - *Evidence:* Affects **2,968 distinct patients** (5.95% of cohort). Median latency is **35.0 minutes**, with a heavy right tail (mean **410.9 minutes** / 6.85 hours; P90 **104.0 minutes**). Only 0.27% of transitions are tied.
+   - *Evidence:* Affects **2,968 distinct patients** (5.95% of cohort). Median latency is **35.0 minutes**, with a heavy right tail (mean **410.9 minutes** / 6.85 hours; P90 **108.2 minutes** / 1.80 hours). Only 0.27% of transitions are tied.
    - *Process Context:* This represents the administrative and transport handoff between clinical consultation/prescription order and patient arrival in the diagnostic imaging department. The wide gap between median (35m) and mean (411m) indicates a bimodal operational distribution: same-day walk-in imaging vs. scheduled next-day imaging.
 2. **Pre-Consultation Imaging Triage (`Appointment Start -> Imaging Start`):**
-   - *Evidence:* Affects **1,588 patients** (3.18% of cohort). Median latency is **47.0 minutes**, mean is **71.9 minutes**, and P90 is **172.0 minutes** (2.87 hours). Timestamp ties are negligible (0.13%).
+   - *Evidence:* Affects **1,588 patients** (3.18% of cohort). Median latency is **47.0 minutes**, mean is **71.9 minutes**, and P90 is **181.6 minutes** (3.03 hours). Timestamp ties are negligible (0.13%).
    - *Process Context:* Patients triaged directly from appointment check-in to radiology prior to physician consultation. Waiting room and modality queueing appear to drive the 47-minute median delay.
 
 #### Category B: Diagnostic & Analytical Service Times (Not Waiting Room Delays)
 1. **Laboratory Specimen Turnaround (`Laboratory Start -> Laboratory End`):**
-   - *Evidence:* Occurs **4,415 times** across **4,363 cases** (8.74% of cohort). Median duration is **81.0 minutes** (1.35 hours); mean is **285.9 minutes** (4.76 hours); P90 is **367.6 minutes** (6.13 hours). Only 0.02% of transitions are tied.
+   - *Evidence:* Occurs **4,415 times** across **4,363 cases** (8.74% of cohort). Median duration is **81.0 minutes** (1.35 hours); mean is **285.9 minutes** (4.76 hours); P90 is **230.0 minutes** (3.83 hours). Only 0.02% of transitions are tied.
    - *Process Context:* In process mining, this transition connects the final specimen draw to the initial verified result in multi-test encounters. It captures **analytical processing latency** (centrifugation, analyzer run time, microbiological incubation, and pathologist verification). It must **not** be interpreted as patient physical waiting time.
 
 #### Category C: Cross-Modality Staging & Inter-Day Scheduling
 1. **Post-Laboratory Imaging Scheduling (`Laboratory End -> Imaging Start`):**
-   - *Evidence:* Exhibits the highest median duration among supported transitions (**191.0 minutes** / 3.18 hours; mean **3,443.8 minutes** / 57.40 hours; P90 **16,846.0 minutes** / 11.7 days).
+   - *Evidence:* Exhibits the highest median duration among supported transitions (**191.0 minutes** / 3.18 hours; mean **3,443.8 minutes** / 57.40 hours; P90 **12,916.0 minutes** / 8.97 days).
    - *Process Context:* Affects a small cohort of **171 complex patients** (0.34%). The multiday mean and P90 reflect asynchronous outpatient restaging—patients receiving lab results on Day 1 and returning for specialized imaging on subsequent days—rather than queue delays in clinic hallways.
 
 #### Category D: Metrics Uninterpretable as Bottlenecks Due to Data Limitations
@@ -372,6 +372,6 @@ The complete temporal performance and bottleneck analysis is deterministic, self
 ## 11. Conclusions
 
 1. **Operational Baseline Established:** Outpatient routine encounters exhibit a median elapsed duration of **26.0 minutes**, while diagnostic workups range between **81.0 minutes** (imaging) and **171.0 minutes** (laboratory), extending to **307.0 minutes** for multi-department care.
-2. **Confirmed Referral Delays:** The primary operational bottleneck requiring workflow optimization is the **outpatient radiology referral handoff** (`Prescription Order -> Imaging Start`), with a median latency of **35.0 minutes** and a heavy 90th-percentile tail of **104.0 minutes** affecting nearly 3,000 patient encounters.
+2. **Confirmed Referral Delays:** The primary operational bottleneck requiring workflow optimization is the **outpatient radiology referral handoff** (`Prescription Order -> Imaging Start`), with a median latency of **35.0 minutes** and a heavy 90th-percentile tail of **108.2 minutes** affecting nearly 3,000 patient encounters.
 3. **Analytical Turnaround Clarified:** Specimen laboratory testing exhibits a median turnaround of **81.0 – 96.0 minutes**, reflecting essential analytical incubation rather than patient transit delays.
 4. **Data Hygiene & Methodological Integrity:** Tie-breaking sensitivity and pairing limitations have been formally quantified, ensuring that future CareFlow dashboard visualizer components represent clinical reality without confounding data artifacts.
