@@ -8,13 +8,13 @@ Inputs:
   - data/raw/careflow_source.csv (immutable)
   - data/processed/cleaned_source.csv (immutable)
   - data/processed/event_log.csv (immutable)
-  - reports/phase3/pathway_models/{category_slug}.pnml (committed Step 3 models)
+  - reports/models/pathway_models/{category_slug}.pnml (committed Step 3 models)
 
 Outputs:
   - data/processed/pathway_alignment_quality.csv
   - data/processed/pathway_alignment_deviations.csv
   - data/processed/pathway_alignment_performance.csv
-  - reports/phase3_conformance_alignment.md
+  - reports/conformance_alignment.md
 
 Safety & Integrity Rules:
   - Preserves immutable file integrity with pre- and post-execution SHA-256 assertions.
@@ -50,8 +50,8 @@ CLEANED_CSV_PATH = BASE_DIR / "data" / "processed" / "cleaned_source.csv"
 EVENT_LOG_PATH = BASE_DIR / "data" / "processed" / "event_log.csv"
 PROCESSED_DIR = BASE_DIR / "data" / "processed"
 REPORTS_DIR = BASE_DIR / "reports"
-MODELS_DIR = REPORTS_DIR / "phase3" / "pathway_models"
-REPORT_MD_PATH = REPORTS_DIR / "phase3_conformance_alignment.md"
+MODELS_DIR = REPORTS_DIR / "models" / "pathway_models"
+REPORT_MD_PATH = REPORTS_DIR / "conformance_alignment.md"
 
 QUALITY_CSV_PATH = PROCESSED_DIR / "pathway_alignment_quality.csv"
 DEVIATIONS_CSV_PATH = PROCESSED_DIR / "pathway_alignment_deviations.csv"
@@ -1069,7 +1069,7 @@ def author_report(
         ev_e = q["evaluated_events"]
         s_pct = q["sampling_percentage"]
 
-        mod_link = f"[`{slug}.pnml`](file:///d:/Care%20Flow/reports/phase3/pathway_models/{slug}.pnml)" if slug != "None" else "N/A"
+        mod_link = f"[`{slug}.pnml`](file:///d:/Care%20Flow/reports/models/pathway_models/{slug}.pnml)" if slug != "None" else "N/A"
         lines.append(
             f"| **{c_name}** | {th_c:,} | {th_e:,} | {ev_c:,} | {ev_e:,} | {eval_t} | {s_pct:.2f}% | {mod_link} |"
         )

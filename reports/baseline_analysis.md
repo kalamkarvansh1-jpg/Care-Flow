@@ -2,7 +2,7 @@
 
 **Document Title:** Healthcare Process Mining Baseline Analysis & Process Discovery
 **Target Event Log:** `data/processed/event_log.csv`
-**Derived Visualizations:** [`reports/phase3/dfg_exploratory_synthetic.png`](file:///d:/Care%20Flow/reports/phase3/dfg_exploratory_synthetic.png)
+**Derived Visualizations:** [`reports/models/dfg_exploratory_synthetic.png`](file:///d:/Care%20Flow/reports/models/dfg_exploratory_synthetic.png)
 **Execution Context:** Senior Python Data Analyst & Process Mining Engineer
 **Date of Execution:** October 16, 2026
 **Status:** Completed & Empirically Reconciled
@@ -124,8 +124,8 @@ Total observed transitions between consecutive activities within encounters: **9
 
 ### Visual DFG Artifact:
 The complete Directly-Follows Graph has been rendered and saved as an artifact:
-- **High-Resolution Visual Image:** [`reports/phase3/dfg_exploratory_synthetic.png`](file:///d:/Care%20Flow/reports/phase3/dfg_exploratory_synthetic.png)
-- **Graphviz DOT Specification:** [`reports/phase3/dfg_exploratory_synthetic.dot`](file:///d:/Care%20Flow/reports/phase3/dfg_exploratory_synthetic.dot)
+- **High-Resolution Visual Image:** [`reports/models/dfg_exploratory_synthetic.png`](file:///d:/Care%20Flow/reports/models/dfg_exploratory_synthetic.png)
+- **Graphviz DOT Specification:** [`reports/models/dfg_exploratory_synthetic.dot`](file:///d:/Care%20Flow/reports/models/dfg_exploratory_synthetic.dot)
 
 ---
 
@@ -191,7 +191,7 @@ The Inductive Miner algorithm (`pm4py.discover_process_tree_inductive`) executed
 
 ### Derived Formal Petri Net Artifact:
 The Inductive Miner process tree was converted into a formal Petri net (with initial and final markings) and serialized to standard PNML:
-- **File Path:** [`reports/phase3/inductive_petri_net_synthetic.pnml`](file:///d:/Care%20Flow/reports/phase3/inductive_petri_net_synthetic.pnml)
+- **File Path:** [`reports/models/inductive_petri_net_synthetic.pnml`](file:///d:/Care%20Flow/reports/models/inductive_petri_net_synthetic.pnml)
 
 ---
 

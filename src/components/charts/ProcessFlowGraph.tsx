@@ -7,7 +7,7 @@ import {
   GitFork,
 } from 'lucide-react';
 import { ActivityMetric, ActivityTransition, CaseSummary } from '../../types';
-import { formatNumber } from '../../lib/formatters';
+import { formatNumber, formatDurationMinutes } from '../../lib/formatters';
 
 interface ProcessFlowGraphProps {
   activities: ActivityMetric[];
@@ -52,6 +52,7 @@ export const ProcessFlowGraph: React.FC<ProcessFlowGraphProps> = ({
 }) => {
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [viewMode, setViewMode] = useState<'graph' | 'grid'>('graph');
+  const [durationMetric, setDurationMetric] = useState<'both' | 'median' | 'p90'>('both');
 
   // Compute node dimensions and layout
   const nodeWidth = 200;
@@ -174,10 +175,10 @@ export const ProcessFlowGraph: React.FC<ProcessFlowGraphProps> = ({
         Math.min(4.5, 1.5 + (t.percentageOfDepartures / 100) * 3)
       );
 
-      // Severity based on median duration
+      // Severity based on median duration or P90 tail latency
       let severity: 'nominal' | 'moderate' | 'high' = 'nominal';
-      if (t.medianElapsedMinutes >= 60) severity = 'high';
-      else if (t.medianElapsedMinutes >= 30) severity = 'moderate';
+      if (t.medianElapsedMinutes >= 60 || t.p90ElapsedMinutes >= 120) severity = 'high';
+      else if (t.medianElapsedMinutes >= 30 || t.p90ElapsedMinutes >= 60) severity = 'moderate';
 
       let pathD = '';
       let labelX = 0;
@@ -291,13 +292,53 @@ export const ProcessFlowGraph: React.FC<ProcessFlowGraphProps> = ({
             </span>
             <span className="flex items-center gap-1">
               <span className="w-2.5 h-0.5 bg-rose-500" />
-              <span>&gt;60m</span>
+              <span>&gt;60m / P90&gt;120m</span>
             </span>
             <span className="flex items-center gap-1">
               <span className="w-2.5 h-0.5 border-t border-dashed border-teal-600" />
               <span>Rework</span>
             </span>
           </div>
+
+          {/* Metric Mode Selector */}
+          {viewMode === 'graph' && (
+            <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-2xs text-[11px]">
+              <span className="text-slate-400 px-1.5 font-medium">Metric:</span>
+              <button
+                type="button"
+                onClick={() => setDurationMetric('both')}
+                className={`px-2 py-0.5 rounded transition-all cursor-pointer font-medium ${
+                  durationMetric === 'both'
+                    ? 'bg-sky-600 text-white font-semibold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Both (Med + P90)
+              </button>
+              <button
+                type="button"
+                onClick={() => setDurationMetric('median')}
+                className={`px-2 py-0.5 rounded transition-all cursor-pointer font-medium ${
+                  durationMetric === 'median'
+                    ? 'bg-sky-600 text-white font-semibold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Median
+              </button>
+              <button
+                type="button"
+                onClick={() => setDurationMetric('p90')}
+                className={`px-2 py-0.5 rounded transition-all cursor-pointer font-medium ${
+                  durationMetric === 'p90'
+                    ? 'bg-sky-600 text-white font-semibold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                P90 Tail
+              </button>
+            </div>
+          )}
 
           {/* Zoom Buttons */}
           {viewMode === 'graph' && (
@@ -477,6 +518,37 @@ export const ProcessFlowGraph: React.FC<ProcessFlowGraphProps> = ({
                       markerId = 'arrow-moderate';
                     }
 
+                    let badgeWidth = 92;
+                    let badgeX = -46;
+                    let labelText = '';
+
+                    const caseStr = formatNumber(edge.transition.caseCount);
+                    const medStr = `${edge.transition.medianElapsedMinutes}m`;
+                    const p90Str = `${edge.transition.p90ElapsedMinutes}m`;
+
+                    if (durationMetric === 'both') {
+                      labelText = `${caseStr} (${medStr} • P90:${p90Str})`;
+                      badgeWidth = 146;
+                      badgeX = -73;
+                    } else if (durationMetric === 'p90') {
+                      labelText = `${caseStr} (P90:${p90Str})`;
+                      badgeWidth = 108;
+                      badgeX = -54;
+                    } else {
+                      labelText = `${caseStr} (${medStr})`;
+                      badgeWidth = 92;
+                      badgeX = -46;
+                    }
+
+                    const tooltipText =
+                      `Transition: ${edge.from} → ${edge.to}\n` +
+                      `Cases: ${caseStr} (${edge.transition.percentageOfDepartures}% of departures)\n` +
+                      `Observations: ${formatNumber(edge.transition.observationCount)}\n` +
+                      `Median Duration: ${edge.transition.medianElapsedMinutes} min (${formatDurationMinutes(edge.transition.medianElapsedMinutes)})\n` +
+                      `P90 Tail Duration: ${edge.transition.p90ElapsedMinutes} min (${formatDurationMinutes(edge.transition.p90ElapsedMinutes)})\n` +
+                      `Mean Duration: ${edge.transition.meanElapsedMinutes} min (${formatDurationMinutes(edge.transition.meanElapsedMinutes)})\n` +
+                      `Flow Type: ${edge.isBackward ? 'Rework Loop / Recurrence' : 'Forward Progression'}`;
+
                     return (
                       <g
                         key={edge.id}
@@ -493,14 +565,17 @@ export const ProcessFlowGraph: React.FC<ProcessFlowGraphProps> = ({
                           strokeDasharray={edge.isBackward ? '5 4' : undefined}
                           markerEnd={`url(#${markerId})`}
                           className="transition-colors duration-200"
-                        />
+                        >
+                          <title>{tooltipText}</title>
+                        </path>
 
                         {/* Edge Label Badge */}
                         <g transform={`translate(${edge.labelX}, ${edge.labelY})`}>
+                          <title>{tooltipText}</title>
                           <rect
-                            x="-46"
+                            x={badgeX}
                             y="-9"
-                            width="92"
+                            width={badgeWidth}
                             height="18"
                             rx="9"
                             fill="#ffffff"
@@ -524,7 +599,7 @@ export const ProcessFlowGraph: React.FC<ProcessFlowGraphProps> = ({
                             textAnchor="middle"
                             className="text-[9px] font-mono font-medium fill-slate-700"
                           >
-                            {formatNumber(edge.transition.caseCount)} ({edge.transition.medianElapsedMinutes}m)
+                            {labelText}
                           </text>
                         </g>
                       </g>

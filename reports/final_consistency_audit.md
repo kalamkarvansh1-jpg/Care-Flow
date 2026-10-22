@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary & Audit Clearance
 
-This Phase 3 Step 9 audit marks the formal completion of the CareFlow Process Mining diagnostic phase. Following the evidence-based investigations conducted in Step 7 (`reports/phase3_step7_independent_validation.md`) and Step 8 (`reports/phase3_step8_discrepancy_resolution.md`), a controlled, line-by-line editorial correction was executed on `reports/phase3_performance_bottleneck_analysis.md`.
+This Phase 3 Step 9 audit marks the formal completion of the CareFlow Process Mining diagnostic phase. Following the evidence-based investigations conducted in Step 7 (`reports/independent_validation.md`) and Step 8 (`reports/discrepancy_resolution.md`), a controlled, line-by-line editorial correction was executed on `reports/performance_bottleneck_analysis.md`.
 
 All historical narrative inconsistencies between descriptive paragraphs and empirical tabular exports have been eliminated. The CareFlow process mining documentation, underlying canonical event log, aggregate CSV exports, and automated validation scripts are now **100% synchronized, cryptographically verified, and mutually consistent**.
 
@@ -20,7 +20,7 @@ All historical narrative inconsistencies between descriptive paragraphs and empi
 | **`cleaned_source.csv`** | Verified Match | Known Canonical SHA-256 Checksum | 100% Immutable |
 | **`event_log.csv`** | Verified Match | Known Canonical SHA-256 Checksum | 100% Immutable |
 | **Aggregate CSV Exports** | 100% Exact Match | Recomputed from Canonical Log | Fully Reconciled |
-| **Step 6 Report (`phase3_performance_bottleneck_analysis.md`)** | Corrected & Verified | Dynamic Tables & CSV Exports | 100% Consistent |
+| **Step 6 Report (`performance_bottleneck_analysis.md`)** | Corrected & Verified | Dynamic Tables & CSV Exports | 100% Consistent |
 | **Step 7 Audit Script (`independent_validation_step7.py`)** | Execution Passed (0 Errors) | Re-derived Percentiles | 0 Discrepancies |
 | **Step 8 Regression Suite (`discrepancy_resolution_step8.py`)** | All Assertions Passed | Canonical Event Log | 100% Verified |
 
@@ -40,7 +40,7 @@ To guarantee that no underlying raw, cleaned, or canonical event-log data was mo
 
 ## 3. Controlled Narrative Corrections Applied to Step 6 Report
 
-Editorial corrections in `reports/phase3_performance_bottleneck_analysis.md` were strictly confined to the four verified stale narrative values identified during the Step 7 audit and mathematically proven in Step 8:
+Editorial corrections in `reports/performance_bottleneck_analysis.md` were strictly confined to the four verified stale narrative values identified during the Step 7 audit and mathematically proven in Step 8:
 
 ### 3.1 Side-by-Side Summary of Corrected Values
 
@@ -51,7 +51,7 @@ Editorial corrections in `reports/phase3_performance_bottleneck_analysis.md` wer
 | **`Appointment Start -> Imaging Start`** | P90 Duration | `172.0 min` (2.87 h) | **`181.6 min`** (3.03 h) | `181.6 min` in Table 7.1, CSVs | Replaced single-pathway carryover ($N=1,242$, P90=172.8m) with whole-cohort metric ($N=1,588$). |
 | **`Laboratory End -> Imaging Start`** | P90 Duration | `16,846.0 min` (11.7 d) | **`12,916.0 min`** (8.97 d) | `12916.0 min` in Table 7.1, CSVs | Replaced ~93rd percentile exploratory draft value with exact linear P90. |
 
-### 3.2 Specific Line-by-Line Changes in `reports/phase3_performance_bottleneck_analysis.md`
+### 3.2 Specific Line-by-Line Changes in `reports/performance_bottleneck_analysis.md`
 
 #### A. Section 1 (Executive Summary) — Primary Candidate Bottlenecks (Lines 19–22)
 - **`Prescription Order -> Imaging Start`:** Updated 90th percentile from `104.0 minutes (1.73 hours)` to `108.2 minutes (1.80 hours)`.
@@ -106,7 +106,7 @@ In accordance with Step 9 audit requirements, `scripts/process_mining/independen
 2. **Identified Audit Gaps:**
    - **Gap 1 (Coverage):** `Laboratory End -> Imaging Start` is omitted from `independent_validation_step7.py` (only 3 checks exist).
    - **Gap 2 (Locality):** Single `re.search` targets only the first occurrence in Section 1, omitting Sections 7.1, 7.2, and 11.
-   - **Gap 3 (Enforcement):** Step 7 was designed as an audit reporter that catalogs discrepancies into `phase3_step7_independent_validation.md` rather than raising a fatal build assertion. (Fatal assertions are currently enforced in `scripts/process_mining/discrepancy_resolution_step8.py`).
+   - **Gap 3 (Enforcement):** Step 7 was designed as an audit reporter that catalogs discrepancies into `independent_validation.md` rather than raising a fatal build assertion. (Fatal assertions are currently enforced in `scripts/process_mining/discrepancy_resolution_step8.py`).
 3. **Proposed Smallest Safe Fix:**
    To extend Step 7 coverage to all four bottlenecks without modifying datasets or aggregate CSVs, the following minimal 15-line block is proposed for insertion at line 332 of `independent_validation_step7.py`:
    ```python

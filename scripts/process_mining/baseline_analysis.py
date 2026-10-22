@@ -11,11 +11,11 @@ Outputs:
   - data/processed/process_variants.csv
   - data/processed/transition_frequency.csv
   - data/processed/transition_performance.csv
-  - reports/phase3/dfg_exploratory_synthetic.png
-  - reports/phase3/dfg_exploratory_synthetic.dot
-  - reports/phase3/inductive_process_tree_synthetic.txt
-  - reports/phase3/inductive_petri_net_synthetic.pnml
-  - reports/phase3_baseline_analysis.md
+  - reports/models/dfg_exploratory_synthetic.png
+  - reports/models/dfg_exploratory_synthetic.dot
+  - reports/models/inductive_process_tree_synthetic.txt
+  - reports/models/inductive_petri_net_synthetic.pnml
+  - reports/baseline_analysis.md
 
 Strict Safety Rules:
   - Does NOT modify original or cleaned datasets.
@@ -41,8 +41,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 EVENT_LOG_PATH = BASE_DIR / "data" / "processed" / "event_log.csv"
 PROCESSED_DIR = BASE_DIR / "data" / "processed"
 REPORTS_DIR = BASE_DIR / "reports"
-PHASE3_DIR = REPORTS_DIR / "phase3"
-REPORT_MD_PATH = REPORTS_DIR / "phase3_baseline_analysis.md"
+MODELS_DIR = REPORTS_DIR / "models"
+REPORT_MD_PATH = REPORTS_DIR / "baseline_analysis.md"
 
 EXPECTED_CASES = 49912
 EXPECTED_EVENTS = 142876
@@ -75,7 +75,7 @@ def run_baseline_analysis():
     df["case:concept:name"] = df["case_id"].astype(str)
 
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    PHASE3_DIR.mkdir(parents=True, exist_ok=True)
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
     # 2. Activity Frequency Analysis
     print("[2/7] Computing activity frequency and trace length distributions...")
@@ -228,7 +228,7 @@ def run_baseline_analysis():
     dfg, sa, ea = pm4py.discover_dfg(df)
 
     # A. Export Graphviz DOT file
-    dot_path = PHASE3_DIR / "dfg_exploratory_synthetic.dot"
+    dot_path = MODELS_DIR / "dfg_exploratory_synthetic.dot"
     with open(dot_path, "w", encoding="utf-8") as f:
         f.write("digraph CareFlow_Exploratory_DFG {\n")
         f.write('  rankdir="LR";\n')
@@ -278,7 +278,7 @@ def run_baseline_analysis():
     plt.axis("off")
     plt.tight_layout()
 
-    png_path = PHASE3_DIR / "dfg_exploratory_synthetic.png"
+    png_path = MODELS_DIR / "dfg_exploratory_synthetic.png"
     plt.savefig(png_path, dpi=300, bbox_inches="tight")
     plt.close()
     print(f"      Saved: {png_path.name}")
@@ -290,7 +290,7 @@ def run_baseline_analysis():
     t1 = time.time()
     print(f"      Inductive Miner generated Process Tree & Petri Net in {t1 - t0:.2f}s.")
 
-    tree_path = PHASE3_DIR / "inductive_process_tree_synthetic.txt"
+    tree_path = MODELS_DIR / "inductive_process_tree_synthetic.txt"
     with open(tree_path, "w", encoding="utf-8") as f:
         f.write("CareFlow: Inductive Miner Process Tree Representation\n")
         f.write("Target: Exploratory analysis of synthetic clinical pathway dataset\n")
@@ -299,7 +299,7 @@ def run_baseline_analysis():
         f.write(str(process_tree) + "\n")
     print(f"      Saved: {tree_path.name}")
 
-    pnml_path = PHASE3_DIR / "inductive_petri_net_synthetic.pnml"
+    pnml_path = MODELS_DIR / "inductive_petri_net_synthetic.pnml"
     pm4py.write_pnml(net, im, fm, str(pnml_path))
     print(f"      Saved: {pnml_path.name}")
 
@@ -361,7 +361,7 @@ def author_report(
 
 **Document Title:** Healthcare Process Mining Baseline Analysis & Process Discovery
 **Target Event Log:** `data/processed/event_log.csv`
-**Derived Visualizations:** [`reports/phase3/dfg_exploratory_synthetic.png`](file:///d:/Care%20Flow/reports/phase3/dfg_exploratory_synthetic.png)
+**Derived Visualizations:** [`reports/models/dfg_exploratory_synthetic.png`](file:///d:/Care%20Flow/reports/models/dfg_exploratory_synthetic.png)
 **Execution Context:** Senior Python Data Analyst & Process Mining Engineer
 **Date of Execution:** October 16, 2026
 **Status:** Completed & Empirically Reconciled
@@ -461,8 +461,8 @@ Total observed transitions between consecutive activities within encounters: **{
     content += f"""
 ### Visual DFG Artifact:
 The complete Directly-Follows Graph has been rendered and saved as an artifact:
-- **High-Resolution Visual Image:** [`reports/phase3/dfg_exploratory_synthetic.png`](file:///d:/Care%20Flow/reports/phase3/dfg_exploratory_synthetic.png)
-- **Graphviz DOT Specification:** [`reports/phase3/dfg_exploratory_synthetic.dot`](file:///d:/Care%20Flow/reports/phase3/dfg_exploratory_synthetic.dot)
+- **High-Resolution Visual Image:** [`reports/models/dfg_exploratory_synthetic.png`](file:///d:/Care%20Flow/reports/models/dfg_exploratory_synthetic.png)
+- **Graphviz DOT Specification:** [`reports/models/dfg_exploratory_synthetic.dot`](file:///d:/Care%20Flow/reports/models/dfg_exploratory_synthetic.dot)
 
 ---
 
@@ -518,7 +518,7 @@ The Inductive Miner algorithm (`pm4py.discover_process_tree_inductive`) executed
 
 ### Derived Formal Petri Net Artifact:
 The Inductive Miner process tree was converted into a formal Petri net (with initial and final markings) and serialized to standard PNML:
-- **File Path:** [`reports/phase3/inductive_petri_net_synthetic.pnml`](file:///d:/Care%20Flow/reports/phase3/inductive_petri_net_synthetic.pnml)
+- **File Path:** [`reports/models/inductive_petri_net_synthetic.pnml`](file:///d:/Care%20Flow/reports/models/inductive_petri_net_synthetic.pnml)
 
 ---
 

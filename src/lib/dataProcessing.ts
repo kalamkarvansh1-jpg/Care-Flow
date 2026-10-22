@@ -32,8 +32,15 @@ export function calculateMean(numbers: number[]): number {
 export function calculatePercentile(numbers: number[], p: number): number {
   if (!numbers || numbers.length === 0) return 0;
   const sorted = [...numbers].sort((a, b) => a - b);
-  const index = Math.min(Math.floor((p / 100) * sorted.length), sorted.length - 1);
-  return sorted[index];
+  if (sorted.length === 1) return sorted[0];
+
+  // Linear quantile interpolation matching PM4Py / NumPy method='linear'
+  const index = (p / 100) * (sorted.length - 1);
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  const weight = index - lower;
+
+  return sorted[lower] * (1 - weight) + sorted[upper] * weight;
 }
 
 /**
@@ -259,7 +266,7 @@ export function extractProcessVariants(cases: CaseSummary[]): ProcessVariant[] {
  */
 export function extractActivityMetrics(
   events: NormalizedEvent[],
-  totalCasesCount: number
+  _totalCasesCount: number
 ): ActivityMetric[] {
   if (events.length === 0) return [];
 
@@ -295,7 +302,7 @@ export function extractActivityMetrics(
       frequency: entry.count,
       caseCount: entry.cases.size,
       percentage,
-      medianElapsedMinutes: Math.round(calculateMedian(entry.elapsedTimes)),
+      medianElapsedMinutes: Math.round(calculateMedian(entry.elapsedTimes) * 10) / 10,
       department: entry.department,
     });
   });
@@ -358,9 +365,9 @@ export function extractTransitions(cases: CaseSummary[]): ActivityTransition[] {
       to: item.to,
       observationCount: item.count,
       caseCount: item.cases.size,
-      medianElapsedMinutes: Math.round(calculateMedian(item.durations)),
-      meanElapsedMinutes: Math.round(calculateMean(item.durations)),
-      p90ElapsedMinutes: Math.round(calculatePercentile(item.durations, 90)),
+      medianElapsedMinutes: Math.round(calculateMedian(item.durations) * 10) / 10,
+      meanElapsedMinutes: Math.round(calculateMean(item.durations) * 10) / 10,
+      p90ElapsedMinutes: Math.round(calculatePercentile(item.durations, 90) * 10) / 10,
       percentageOfDepartures,
     });
   });
@@ -375,15 +382,15 @@ export function extractTransitions(cases: CaseSummary[]): ActivityTransition[] {
  */
 export function extractBottlenecks(
   transitions: ActivityTransition[],
-  activityMetrics: ActivityMetric[]
+  _activityMetrics: ActivityMetric[]
 ): BottleneckItem[] {
   const bottlenecks: BottleneckItem[] = [];
 
-  // Ranked transitions with notable median elapsed times
+  // Ranked transitions with notable median or P90 elapsed times
   for (const tr of transitions) {
     let severity: 'high' | 'moderate' | 'nominal' = 'nominal';
-    if (tr.medianElapsedMinutes >= 60) severity = 'high';
-    else if (tr.medianElapsedMinutes >= 30) severity = 'moderate';
+    if (tr.medianElapsedMinutes >= 60 || tr.p90ElapsedMinutes >= 120) severity = 'high';
+    else if (tr.medianElapsedMinutes >= 30 || tr.p90ElapsedMinutes >= 60) severity = 'moderate';
 
     bottlenecks.push({
       id: tr.id,
@@ -395,6 +402,7 @@ export function extractBottlenecks(
       caseCount: tr.caseCount,
       medianElapsedMinutes: tr.medianElapsedMinutes,
       meanElapsedMinutes: tr.meanElapsedMinutes,
+      p90ElapsedMinutes: tr.p90ElapsedMinutes,
       severity,
       explanation: `Observed transition traversed by ${tr.caseCount} distinct cases with ${tr.observationCount} total instances.`,
     });

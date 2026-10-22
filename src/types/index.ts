@@ -87,6 +87,7 @@ export interface BottleneckItem {
   caseCount: number;
   medianElapsedMinutes: number;
   meanElapsedMinutes: number;
+  p90ElapsedMinutes: number;
   severity: 'high' | 'moderate' | 'nominal';
   explanation: string;
 }

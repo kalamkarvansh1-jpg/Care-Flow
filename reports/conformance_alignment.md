@@ -64,12 +64,12 @@ A* state-space alignment calculations are computationally intensive. To maintain
 
 | Workflow Category | Total Holdout Cases | Total Holdout Events | Cases Evaluated | Events Evaluated | Sampling Policy / Status | Evaluated Sample % | Model File Evaluated |
 | :--- | :---: | :---: | :---: | :---: | :--- | :---: | :--- |
-| **Appointment → Prescription** | 7,932 | 15,952 | 1,000 | 2,014 | Deterministic Sample (n=1,000) | 12.61% | [`appointment_prescription.pnml`](file:///d:/Care%20Flow/reports/phase3/pathway_models/appointment_prescription.pnml) |
-| **Appointment → Prescription → Lab** | 960 | 6,037 | 960 | 6,037 | Full Holdout | 100.00% | [`appointment_prescription_lab.pnml`](file:///d:/Care%20Flow/reports/phase3/pathway_models/appointment_prescription_lab.pnml) |
-| **Appointment → Prescription → Imaging** | 757 | 3,089 | 757 | 3,089 | Full Holdout | 100.00% | [`appointment_prescription_imaging.pnml`](file:///d:/Care%20Flow/reports/phase3/pathway_models/appointment_prescription_imaging.pnml) |
-| **Ambiguous Source Flow (Multi-Category Encounter)** | 246 | 2,988 | 246 | 2,988 | Full Holdout | 100.00% | [`ambiguous_multi_category.pnml`](file:///d:/Care%20Flow/reports/phase3/pathway_models/ambiguous_multi_category.pnml) |
-| **Appointment → Prescription → Lab + Imaging** | 69 | 395 | 69 | 395 | Full Holdout | 100.00% | [`appointment_prescription_lab_imaging.pnml`](file:///d:/Care%20Flow/reports/phase3/pathway_models/appointment_prescription_lab_imaging.pnml) |
-| **Appointment → Prescription → Pharmacy** | 19 | 120 | 19 | 120 | Full Holdout | 100.00% | [`appointment_prescription_pharmacy.pnml`](file:///d:/Care%20Flow/reports/phase3/pathway_models/appointment_prescription_pharmacy.pnml) |
+| **Appointment → Prescription** | 7,932 | 15,952 | 1,000 | 2,014 | Deterministic Sample (n=1,000) | 12.61% | [`appointment_prescription.pnml`](file:///d:/Care%20Flow/reports/models/pathway_models/appointment_prescription.pnml) |
+| **Appointment → Prescription → Lab** | 960 | 6,037 | 960 | 6,037 | Full Holdout | 100.00% | [`appointment_prescription_lab.pnml`](file:///d:/Care%20Flow/reports/models/pathway_models/appointment_prescription_lab.pnml) |
+| **Appointment → Prescription → Imaging** | 757 | 3,089 | 757 | 3,089 | Full Holdout | 100.00% | [`appointment_prescription_imaging.pnml`](file:///d:/Care%20Flow/reports/models/pathway_models/appointment_prescription_imaging.pnml) |
+| **Ambiguous Source Flow (Multi-Category Encounter)** | 246 | 2,988 | 246 | 2,988 | Full Holdout | 100.00% | [`ambiguous_multi_category.pnml`](file:///d:/Care%20Flow/reports/models/pathway_models/ambiguous_multi_category.pnml) |
+| **Appointment → Prescription → Lab + Imaging** | 69 | 395 | 69 | 395 | Full Holdout | 100.00% | [`appointment_prescription_lab_imaging.pnml`](file:///d:/Care%20Flow/reports/models/pathway_models/appointment_prescription_lab_imaging.pnml) |
+| **Appointment → Prescription → Pharmacy** | 19 | 120 | 19 | 120 | Full Holdout | 100.00% | [`appointment_prescription_pharmacy.pnml`](file:///d:/Care%20Flow/reports/models/pathway_models/appointment_prescription_pharmacy.pnml) |
 | **Appointment → Prescription → Imaging + Pharmacy** | 0 | 0 | 0 | 0 | Unavailable (< 30 cases) | 0.00% | N/A |
 | **Appointment → Prescription → Lab + Pharmacy** | 0 | 0 | 0 | 0 | Unavailable (< 30 cases) | 0.00% | N/A |
 | **Total Evaluated Cohort** | **9,983** | **28,581** | **3,051** | **14,643** | **Combined Evaluation Set** | **30.56%** | **6 PNML Models** |

@@ -12,7 +12,7 @@ Outputs:
   - data/processed/pathway_summary.csv
   - data/processed/variants_by_pathway.csv
   - data/processed/transition_performance_by_pathway.csv
-  - reports/phase3_variant_stratification.md
+  - reports/variant_stratification.md
 
 Safety Rules:
   - Never modifies original, cleaned, or event-log CSVs.
@@ -38,7 +38,7 @@ CLEANED_CSV_PATH = BASE_DIR / "data" / "processed" / "cleaned_source.csv"
 EVENT_LOG_PATH = BASE_DIR / "data" / "processed" / "event_log.csv"
 PROCESSED_DIR = BASE_DIR / "data" / "processed"
 REPORTS_DIR = BASE_DIR / "reports"
-REPORT_MD_PATH = REPORTS_DIR / "phase3_variant_stratification.md"
+REPORT_MD_PATH = REPORTS_DIR / "variant_stratification.md"
 
 EXPECTED_CASES = 49912
 EXPECTED_EVENTS = 142876
@@ -400,7 +400,7 @@ def run_stratification():
     assert summary_csv_path.exists() and summary_csv_path.stat().st_size > 0, "pathway_summary.csv missing or empty!"
     assert variants_csv_path.exists() and variants_csv_path.stat().st_size > 0, "variants_by_pathway.csv missing or empty!"
     assert perf_csv_path.exists() and perf_csv_path.stat().st_size > 0, "transition_performance_by_pathway.csv missing or empty!"
-    assert REPORT_MD_PATH.exists() and REPORT_MD_PATH.stat().st_size > 0, "phase3_variant_stratification.md missing or empty!"
+    assert REPORT_MD_PATH.exists() and REPORT_MD_PATH.stat().st_size > 0, "variant_stratification.md missing or empty!"
 
     # Verify CSV parser record count
     parsed_variants = pd.read_csv(variants_csv_path)

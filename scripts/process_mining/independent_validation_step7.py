@@ -12,9 +12,9 @@ Inputs:
   - data/processed/transition_performance_detailed.csv (Step 6 output audit)
   - data/processed/activity_pairing_summary.csv (Step 6 output audit)
   - data/processed/candidate_bottlenecks.csv (Step 6 output audit)
-  - reports/phase3_performance_bottleneck_analysis.md (Step 6 report audit)
+  - reports/performance_bottleneck_analysis.md (Step 6 report audit)
 Outputs:
-  - reports/phase3_step7_independent_validation.md
+  - reports/independent_validation.md
 
 Strict Safety Rules:
   - Does NOT modify raw, cleaned, or event-log CSV files.
@@ -43,8 +43,8 @@ EVENT_LOG_PATH = BASE_DIR / "data" / "processed" / "event_log.csv"
 PROCESSED_DIR = BASE_DIR / "data" / "processed"
 REPORTS_DIR = BASE_DIR / "reports"
 
-STEP6_REPORT_PATH = REPORTS_DIR / "phase3_performance_bottleneck_analysis.md"
-STEP7_REPORT_PATH = REPORTS_DIR / "phase3_step7_independent_validation.md"
+STEP6_REPORT_PATH = REPORTS_DIR / "performance_bottleneck_analysis.md"
+STEP7_REPORT_PATH = REPORTS_DIR / "independent_validation.md"
 
 CSV_CASE_SUMMARY = PROCESSED_DIR / "case_duration_summary.csv"
 CSV_TRANS_DETAILED = PROCESSED_DIR / "transition_performance_detailed.csv"
@@ -62,6 +62,14 @@ KNOWN_HASHES = {
     CLEANED_CSV_PATH: "674212c0e4b97d64045e53f2908418c1f229f8e15dd7da801a99436584e614f3",
     EVENT_LOG_PATH: "cdab7bbc0e6755cb927a2a627bff2108e48d94ce0e38f62354ed72dcfb63442d",
 }
+
+EXPECTED_P90_VALUES = {
+    "Laboratory Start -> Laboratory End": 230.0,
+    "Prescription Order -> Imaging Start": 108.2,
+    "Appointment Start -> Imaging Start": 181.6,
+    "Laboratory End -> Imaging Start": 12916.0,
+}
+
 
 
 def compute_file_sha256(filepath: Path) -> str:
@@ -89,7 +97,124 @@ def verify_immutable_inputs(stage_tag: str):
         print(f"      {path.name}: {actual_hash[:16]}... (Verified match)")
 
 
-def run_independent_validation():
+def validate_narrative_p90_regression(step6_text: str, bn_audit_results: dict) -> list:
+    """
+    Validates that:
+    1. The four candidate bottleneck P90 values computed from event data match expected values.
+    2. All relevant narrative occurrences in reports/performance_bottleneck_analysis.md
+       (Section 1, Section 7.2, Section 11) and Table 7.1 match empirical P90 values exactly.
+    Returns a list of fatal error descriptions. If valid, returns an empty list.
+    """
+    errors = []
+
+    # 1. Validate data calculation vs expected
+    for pair, expected_val in EXPECTED_P90_VALUES.items():
+        if pair not in bn_audit_results:
+            errors.append(f"Bottleneck '{pair}' missing from event data audit results.")
+            continue
+        calc_val = bn_audit_results[pair]["p90"]
+        if calc_val != expected_val:
+            errors.append(
+                f"Event data calculation mismatch for '{pair}': "
+                f"calculated P90 = {calc_val} min, expected {expected_val} min."
+            )
+
+    # 2. Extract sections safely
+    def get_section(start_hdr: str, end_hdr: str) -> str:
+        i = step6_text.find(start_hdr)
+        if i == -1:
+            errors.append(f"Report missing required section header: '{start_hdr}'")
+            return ""
+        if end_hdr:
+            j = step6_text.find(end_hdr, i + len(start_hdr))
+            if j == -1:
+                errors.append(f"Report missing required section delimiter: '{end_hdr}'")
+                return ""
+            return step6_text[i:j]
+        return step6_text[i:]
+
+    sec1 = get_section("## 1. Executive Summary & Key Metrics", "## 2. Input Integrity")
+    sec71 = get_section("### 7.1 Multi-Criteria Ranked Bottleneck Candidates", "### 7.2 Detailed Categorical Interpretation")
+    sec72 = get_section("### 7.2 Detailed Categorical Interpretation", "## 8. Timestamp Ties")
+    sec11 = get_section("## 11. Conclusions", "")
+
+    # 3. Narrative checks across all sections (all 9 relevant narrative occurrences)
+    narrative_specs = [
+        # Section 1: Executive Summary (4 candidate bottlenecks)
+        ("Section 1 (Executive Summary)", "Laboratory Start -> Laboratory End", sec1,
+         r"`Laboratory Start -> Laboratory End`\):[^\n]*?90th percentile of \*\*([0-9,.]+)\s+minutes\*\*"),
+        ("Section 1 (Executive Summary)", "Prescription Order -> Imaging Start", sec1,
+         r"`Prescription Order -> Imaging Start`\):[^\n]*?90th percentile of \*\*([0-9,.]+)\s+minutes\*\*"),
+        ("Section 1 (Executive Summary)", "Appointment Start -> Imaging Start", sec1,
+         r"`Appointment Start -> Imaging Start`\):[^\n]*?90th percentile of \*\*([0-9,.]+)\s+minutes\*\*"),
+        ("Section 1 (Executive Summary)", "Laboratory End -> Imaging Start", sec1,
+         r"`Laboratory End -> Imaging Start`\):[^\n]*?P90 \*\*([0-9,.]+)\s+minutes\*\*"),
+
+        # Section 7.2: Detailed Categorical Interpretation (4 candidate bottlenecks)
+        ("Section 7.2 (Category A)", "Prescription Order -> Imaging Start", sec72,
+         r"`Prescription Order -> Imaging Start`\):[^\n]*?\n[^\n]*?P90 \*\*([0-9,.]+)\s+minutes\*\*"),
+        ("Section 7.2 (Category A)", "Appointment Start -> Imaging Start", sec72,
+         r"`Appointment Start -> Imaging Start`\):[^\n]*?\n[^\n]*?P90 is \*\*([0-9,.]+)\s+minutes\*\*"),
+        ("Section 7.2 (Category B)", "Laboratory Start -> Laboratory End", sec72,
+         r"`Laboratory Start -> Laboratory End`\):[^\n]*?\n[^\n]*?P90 is \*\*([0-9,.]+)\s+minutes\*\*"),
+        ("Section 7.2 (Category C)", "Laboratory End -> Imaging Start", sec72,
+         r"`Laboratory End -> Imaging Start`\):[^\n]*?\n[^\n]*?P90 \*\*([0-9,.]+)\s+minutes\*\*"),
+
+        # Section 11: Conclusions (1 candidate bottleneck)
+        ("Section 11 (Conclusions)", "Prescription Order -> Imaging Start", sec11,
+         r"`Prescription Order -> Imaging Start`\)[^\n]*?90th-percentile tail of \*\*([0-9,.]+)\s+minutes\*\*"),
+    ]
+
+    for sec_name, pair, text_block, pattern in narrative_specs:
+        expected = EXPECTED_P90_VALUES[pair]
+        m = re.search(pattern, text_block)
+        if not m:
+            errors.append(
+                f"Missing or malformed narrative P90 entry for '{pair}' in {sec_name}."
+            )
+        else:
+            val = float(m.group(1).replace(",", "").strip())
+            if val != expected:
+                errors.append(
+                    f"Narrative P90 mismatch for '{pair}' in {sec_name}: "
+                    f"report contains {val} min, expected {expected} min."
+                )
+
+    # 4. Table 7.1 checks (all 4 candidate bottleneck rows)
+    table_found = set()
+    for line in sec71.splitlines():
+        if not line.strip().startswith("|"):
+            continue
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) <= 9 or not parts[1].replace("*", "").isdigit():
+            continue
+        line_src = parts[2].strip("`")
+        line_tgt = parts[3].strip("`")
+        pair_key = f"{line_src} -> {line_tgt}"
+        if pair_key in EXPECTED_P90_VALUES:
+            table_found.add(pair_key)
+            expected = EXPECTED_P90_VALUES[pair_key]
+            try:
+                table_val = float(parts[9].replace(",", "").strip())
+                if table_val != expected:
+                    errors.append(
+                        f"Table 7.1 P90 mismatch for '{pair_key}': "
+                        f"table contains {table_val} min, expected {expected} min."
+                    )
+            except ValueError:
+                errors.append(
+                    f"Table 7.1 P90 unparseable for '{pair_key}': found '{parts[9]}'"
+                )
+
+    missing_table = set(EXPECTED_P90_VALUES.keys()) - table_found
+    if missing_table:
+        for pair in missing_table:
+            errors.append(f"Missing Table 7.1 row for candidate bottleneck '{pair}'.")
+
+    return errors
+
+
+def run_independent_validation(report_path: Path = STEP6_REPORT_PATH):
     start_time = time.time()
     print("=" * 80)
     print("CareFlow: Independent Validation & Findings Audit (Phase 3 Step 7)")
@@ -277,61 +402,30 @@ def run_independent_validation():
         }
 
     # Verify report narrative text vs exact data
-    assert STEP6_REPORT_PATH.exists(), f"Missing report: {STEP6_REPORT_PATH}"
-    with open(STEP6_REPORT_PATH, "r", encoding="utf-8") as f:
+    assert report_path.exists(), f"Missing report: {report_path}"
+    with open(report_path, "r", encoding="utf-8") as f:
         step6_text = f.read()
 
-    # Document Discrepancy Checks
-    print("\n[4/5] Evaluating potential discrepancies and documentation integrity...")
+    # Document Discrepancy Checks & Regression Hardening
+    print("\n[4/5] Evaluating potential discrepancies, documentation integrity, and narrative regression checks...")
+    validation_errors = validate_narrative_p90_regression(step6_text, bn_audit_results)
+    if validation_errors:
+        print("\n" + "!" * 80)
+        print("REGRESSION CHECK FAILURE: Narrative or Table P90 discrepancies detected!")
+        print("!" * 80)
+        for err in validation_errors:
+            print(f"  ❌ {err}")
+        print("!" * 80)
+        sys.exit(1)
+
+    print("      ✓ Event data P90 values match expected baseline (4/4 verified).")
+    print("      ✓ Narrative P90 values match event data across all sections (9/9 verified).")
+    print("      ✓ Table 7.1 P90 values match event data (4/4 verified).")
+    print("      ✓ Zero documentation discrepancies detected. Regression check PASSED.")
     discrepancies = []
 
-    # Check 1: Lab Start -> Lab End P90 in text
-    lab_p90_text_match = re.search(r"Laboratory Start -> Laboratory End.*?90th percentile of \*\*([0-9.]+) minutes\*\*", step6_text, re.DOTALL)
-    if lab_p90_text_match:
-        text_val = float(lab_p90_text_match.group(1))
-        true_val = bn_audit_results["Laboratory Start -> Laboratory End"]["p90"]
-        if text_val != true_val:
-            discrepancies.append({
-                "item": "Laboratory Start -> Laboratory End P90 in Narrative Text",
-                "narrative_value": f"{text_val} min (6.13 hours)",
-                "true_data_value": f"{true_val} min (3.83 hours)",
-                "table_csv_value": "230.0 min (100% correct in Table 5.2, Table 7.1, CSVs)",
-                "impact": "Minor narrative inconsistency; actual table and CSV data are exact."
-            })
-            print(f"      [Discrepancy 1 Documented] Lab Start -> Lab End Narrative P90 = {text_val} min vs True Table P90 = {true_val} min.")
-
-    # Check 2: Prescription Order -> Imaging Start P90 in text
-    rx_img_p90_text_match = re.search(r"Prescription Order -> Imaging Start.*?90th percentile of \*\*([0-9.]+) minutes\*\*", step6_text, re.DOTALL)
-    if rx_img_p90_text_match:
-        text_val = float(rx_img_p90_text_match.group(1))
-        true_val = bn_audit_results["Prescription Order -> Imaging Start"]["p90"]
-        if text_val != true_val:
-            discrepancies.append({
-                "item": "Prescription Order -> Imaging Start P90 in Narrative Text",
-                "narrative_value": f"{text_val} min (1.73 hours)",
-                "true_data_value": f"{true_val} min (1.80 hours)",
-                "table_csv_value": "108.2 min (100% correct in Table 5.2, Table 7.1, CSVs)",
-                "impact": "Minor narrative rounding difference (4.2 min delta)."
-            })
-            print(f"      [Discrepancy 2 Documented] Rx -> Imaging Narrative P90 = {text_val} min vs True Table P90 = {true_val} min.")
-
-    # Check 3: Appointment Start -> Imaging Start P90 in text
-    appt_img_p90_text_match = re.search(r"Appointment Start -> Imaging Start.*?90th percentile of \*\*([0-9.]+) minutes\*\*", step6_text, re.DOTALL)
-    if appt_img_p90_text_match:
-        text_val = float(appt_img_p90_text_match.group(1))
-        true_val = bn_audit_results["Appointment Start -> Imaging Start"]["p90"]
-        if text_val != true_val:
-            discrepancies.append({
-                "item": "Appointment Start -> Imaging Start P90 in Narrative Text",
-                "narrative_value": f"{text_val} min (2.87 hours)",
-                "true_data_value": f"{true_val} min (3.03 hours)",
-                "table_csv_value": "181.6 min (100% correct in Table 5.2, Table 7.1, CSVs)",
-                "impact": "Minor narrative draft carryover (9.6 min delta)."
-            })
-            print(f"      [Discrepancy 3 Documented] Appt -> Imaging Narrative P90 = {text_val} min vs True Table P90 = {true_val} min.")
-
     # 5. Generate Comprehensive Step 7 Independent Validation Report
-    print("\n[5/5] Generating Step 7 independent validation report: phase3_step7_independent_validation.md...")
+    print("\n[5/5] Generating Step 7 independent validation report: independent_validation.md...")
     generate_step7_report(
         bn_audit_results=bn_audit_results,
         discrepancies=discrepancies,
@@ -484,7 +578,7 @@ def generate_step7_report(bn_audit_results, discrepancies, df_case_csv, df_trans
         "",
         "### Audit Rationale & Non-Materiality:",
         "- **Root Cause:** In Step 6, the tabular outputs and CSV generation computed exact linear-interpolation quantiles (`quantile(0.90)`) dynamically. In contrast, the narrative summary text blocks retained preliminary rounded estimates from early exploratory scratch drafts.",
-        "- **Directional Validity:** These minor differences (4.2 min in radiology referral, 9.6 min in pre-consult imaging, and 137.6 min in laboratory turnaround) do not alter the relative latency ranking, clinical interpretation, or bottleneck prioritization. The tabular data in `phase3_performance_bottleneck_analysis.md` and all four CSV files are 100% empirically exact.",
+        "- **Directional Validity:** These minor differences (4.2 min in radiology referral, 9.6 min in pre-consult imaging, and 137.6 min in laboratory turnaround) do not alter the relative latency ranking, clinical interpretation, or bottleneck prioritization. The tabular data in `performance_bottleneck_analysis.md` and all four CSV files are 100% empirically exact.",
         "",
         "---",
         "",
@@ -523,7 +617,7 @@ def generate_step7_report(bn_audit_results, discrepancies, df_case_csv, df_trans
         "",
         "## 8. Privacy Protection & Scope Audit",
         "",
-        "- **Identifier Audit:** An automated regex search for patient-level, appointment-level, and case-level identifiers confirmed that **0 identifiers are present** in `reports/phase3_performance_bottleneck_analysis.md` or any generated CSV files.",
+        "- **Identifier Audit:** An automated regex search for patient-level, appointment-level, and case-level identifiers confirmed that **0 identifiers are present** in `reports/performance_bottleneck_analysis.md` or any generated CSV files.",
         "- **Event Traces:** No complete individual patient traces are printed or exported.",
         "- **Git Exclusion:** All generated CSV files under `data/processed/` are confirmed to be excluded by `.gitignore` (`git check-ignore` returncode 0).",
         "- **Frontend Isolation:** Zero modifications were made to the React/TypeScript frontend.",
@@ -542,8 +636,8 @@ def generate_step7_report(bn_audit_results, discrepancies, df_case_csv, df_trans
         "",
         "### Audit Artifacts Verified",
         "- Validation Script: [`scripts/process_mining/independent_validation_step7.py`](file:///d:/Care%20Flow/scripts/process_mining/independent_validation_step7.py)",
-        "- Validation Report: [`reports/phase3_step7_independent_validation.md`](file:///d:/Care%20Flow/reports/phase3_step7_independent_validation.md)",
-        "- Audited Step 6 Report: [`reports/phase3_performance_bottleneck_analysis.md`](file:///d:/Care%20Flow/reports/phase3_performance_bottleneck_analysis.md)",
+        "- Validation Report: [`reports/independent_validation.md`](file:///d:/Care%20Flow/reports/independent_validation.md)",
+        "- Audited Step 6 Report: [`reports/performance_bottleneck_analysis.md`](file:///d:/Care%20Flow/reports/performance_bottleneck_analysis.md)",
         "",
         "---",
         "",
@@ -558,10 +652,24 @@ def generate_step7_report(bn_audit_results, discrepancies, df_case_csv, df_trans
     ])
 
     report_content = "\n".join(md_lines)
+    # Preservation Guard: Do not overwrite historical Step 7 audit report unless explicitly instructed
+    if STEP7_REPORT_PATH.exists() and os.environ.get("OVERWRITE_HISTORICAL_STEP7") != "1":
+        print(f"      Preserving existing historical audit report: {STEP7_REPORT_PATH.name} (pass OVERWRITE_HISTORICAL_STEP7=1 to overwrite)")
+        return
+
     with open(STEP7_REPORT_PATH, "w", encoding="utf-8") as f:
         f.write(report_content)
     print(f"      Saved independent validation report: {STEP7_REPORT_PATH.name} ({len(report_content):,} chars)")
 
 
 if __name__ == "__main__":
-    run_independent_validation()
+    import argparse
+    parser = argparse.ArgumentParser(description="CareFlow Phase 3 Step 7 Independent Validation & Regression Suite")
+    parser.add_argument(
+        "--report",
+        type=str,
+        default=str(STEP6_REPORT_PATH),
+        help="Path to performance bottleneck report markdown file"
+    )
+    args = parser.parse_args()
+    run_independent_validation(report_path=Path(args.report))

@@ -12,8 +12,8 @@ Outputs:
   - data/processed/pathway_model_quality.csv
   - data/processed/model_variant_coverage.csv
   - data/processed/pathway_model_structure.csv
-  - reports/phase3/pathway_models/ (PNML, DOT, PNG, summary JSON per discovered model)
-  - reports/phase3_pathway_model_evaluation.md
+  - reports/models/pathway_models/ (PNML, DOT, PNG, summary JSON per discovered model)
+  - reports/pathway_model_evaluation.md
 
 Safety Rules:
   - Never modifies original, cleaned, or event-log CSVs.
@@ -49,8 +49,8 @@ CLEANED_CSV_PATH = BASE_DIR / "data" / "processed" / "cleaned_source.csv"
 EVENT_LOG_PATH = BASE_DIR / "data" / "processed" / "event_log.csv"
 PROCESSED_DIR = BASE_DIR / "data" / "processed"
 REPORTS_DIR = BASE_DIR / "reports"
-MODELS_DIR = REPORTS_DIR / "phase3" / "pathway_models"
-REPORT_MD_PATH = REPORTS_DIR / "phase3_pathway_model_evaluation.md"
+MODELS_DIR = REPORTS_DIR / "models" / "pathway_models"
+REPORT_MD_PATH = REPORTS_DIR / "pathway_model_evaluation.md"
 
 QUALITY_CSV_PATH = PROCESSED_DIR / "pathway_model_quality.csv"
 COVERAGE_CSV_PATH = PROCESSED_DIR / "model_variant_coverage.csv"
@@ -736,8 +736,8 @@ def author_report(
         wf = str(r["is_workflow_net"])
         formal_sound = str(r["formal_soundness_verification"])
         construction_sound = str(r["construction_soundness_expectation"])
-        pnml = f"[`{r['pnml_artifact']}`](file:///d:/Care%20Flow/reports/phase3/pathway_models/{r['pnml_artifact']})" if r['pnml_artifact'] != "None" else "None"
-        png = f"[`{r['diagram_artifact']}`](file:///d:/Care%20Flow/reports/phase3/pathway_models/{r['diagram_artifact']})" if r['diagram_artifact'] != "None" else "None"
+        pnml = f"[`{r['pnml_artifact']}`](file:///d:/Care%20Flow/reports/models/pathway_models/{r['pnml_artifact']})" if r['pnml_artifact'] != "None" else "None"
+        png = f"[`{r['diagram_artifact']}`](file:///d:/Care%20Flow/reports/models/pathway_models/{r['diagram_artifact']})" if r['diagram_artifact'] != "None" else "None"
         struct_rows_md.append(f"| **{cat}** | {stat} | {p} | {t} | {a} | {wf} | {formal_sound} | {construction_sound} | {pnml} | {png} |")
 
     struct_table = "\n".join(struct_rows_md)
@@ -827,7 +827,7 @@ def author_report(
 - [`data/processed/pathway_model_quality.csv`](file:///d:/Care%20Flow/data/processed/pathway_model_quality.csv)
 - [`data/processed/model_variant_coverage.csv`](file:///d:/Care%20Flow/data/processed/model_variant_coverage.csv)
 - [`data/processed/pathway_model_structure.csv`](file:///d:/Care%20Flow/data/processed/pathway_model_structure.csv)
-**Model Artifacts Directory:** [`reports/phase3/pathway_models/`](file:///d:/Care%20Flow/reports/phase3/pathway_models/)
+**Model Artifacts Directory:** [`reports/models/pathway_models/`](file:///d:/Care%20Flow/reports/models/pathway_models/)
 **Date of Execution:** October 17, 2026
 **Status:** Metric Formulas Reconciled; Model Verification Limitations Documented
 

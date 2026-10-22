@@ -13,7 +13,7 @@ Outputs:
   - data/processed/transition_performance_detailed.csv
   - data/processed/activity_pairing_summary.csv
   - data/processed/candidate_bottlenecks.csv
-  - reports/phase3_performance_bottleneck_analysis.md
+  - reports/performance_bottleneck_analysis.md
 
 Strict Safety & Governance Rules:
   - Never modifies original, cleaned, or event-log CSV files.
@@ -40,7 +40,7 @@ CLEANED_CSV_PATH = BASE_DIR / "data" / "processed" / "cleaned_source.csv"
 EVENT_LOG_PATH = BASE_DIR / "data" / "processed" / "event_log.csv"
 PROCESSED_DIR = BASE_DIR / "data" / "processed"
 REPORTS_DIR = BASE_DIR / "reports"
-REPORT_MD_PATH = REPORTS_DIR / "phase3_performance_bottleneck_analysis.md"
+REPORT_MD_PATH = REPORTS_DIR / "performance_bottleneck_analysis.md"
 
 EXPECTED_CASES = 49912
 EXPECTED_EVENTS = 142876
@@ -573,7 +573,7 @@ def run_performance_bottleneck_analysis():
     print(f"      Saved: {bn_csv_path.name} ({len(bn_df)} candidate transitions ranked)")
 
     # 7. Generate Comprehensive Markdown Report
-    print("\n[6/6] Generating comprehensive technical report: phase3_performance_bottleneck_analysis.md...")
+    print("\n[6/6] Generating comprehensive technical report: performance_bottleneck_analysis.md...")
     generate_markdown_report(
         case_summary_df=case_summary_df,
         global_trans_df=global_trans_df,
@@ -1067,7 +1067,7 @@ def generate_markdown_report(case_summary_df, global_trans_df, pathway_trans_df,
         "",
         "### Verified Derived Deliverables",
         "",
-        "- Technical Report: [`reports/phase3_performance_bottleneck_analysis.md`](file:///d:/Care%20Flow/reports/phase3_performance_bottleneck_analysis.md)",
+        "- Technical Report: [`reports/performance_bottleneck_analysis.md`](file:///d:/Care%20Flow/reports/performance_bottleneck_analysis.md)",
         "- Aggregate Case Duration Summary: [`data/processed/case_duration_summary.csv`](file:///d:/Care%20Flow/data/processed/case_duration_summary.csv)",
         "- Aggregate Transition Performance Table: [`data/processed/transition_performance_detailed.csv`](file:///d:/Care%20Flow/data/processed/transition_performance_detailed.csv)",
         "- Aggregate Activity Pairing Summary: [`data/processed/activity_pairing_summary.csv`](file:///d:/Care%20Flow/data/processed/activity_pairing_summary.csv)",

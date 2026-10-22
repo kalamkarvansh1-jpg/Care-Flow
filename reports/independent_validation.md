@@ -104,7 +104,7 @@ In accordance with auditing standards, all discrepancies between the Step 6 narr
 
 ### Audit Rationale & Non-Materiality:
 - **Root Cause:** In Step 6, the tabular outputs and CSV generation computed exact linear-interpolation quantiles (`quantile(0.90)`) dynamically. In contrast, the narrative summary text blocks retained preliminary rounded estimates from early exploratory scratch drafts.
-- **Directional Validity:** These minor differences (4.2 min in radiology referral, 9.6 min in pre-consult imaging, and 137.6 min in laboratory turnaround) do not alter the relative latency ranking, clinical interpretation, or bottleneck prioritization. The tabular data in `phase3_performance_bottleneck_analysis.md` and all four CSV files are 100% empirically exact.
+- **Directional Validity:** These minor differences (4.2 min in radiology referral, 9.6 min in pre-consult imaging, and 137.6 min in laboratory turnaround) do not alter the relative latency ranking, clinical interpretation, or bottleneck prioritization. The tabular data in `performance_bottleneck_analysis.md` and all four CSV files are 100% empirically exact.
 
 ---
 
@@ -143,7 +143,7 @@ The Step 6 report was audited against clinical realism and synthetic data disclo
 
 ## 8. Privacy Protection & Scope Audit
 
-- **Identifier Audit:** An automated regex search for patient-level, appointment-level, and case-level identifiers confirmed that **0 identifiers are present** in `reports/phase3_performance_bottleneck_analysis.md` or any generated CSV files.
+- **Identifier Audit:** An automated regex search for patient-level, appointment-level, and case-level identifiers confirmed that **0 identifiers are present** in `reports/performance_bottleneck_analysis.md` or any generated CSV files.
 - **Event Traces:** No complete individual patient traces are printed or exported.
 - **Git Exclusion:** All generated CSV files under `data/processed/` are confirmed to be excluded by `.gitignore` (`git check-ignore` returncode 0).
 - **Frontend Isolation:** Zero modifications were made to the React/TypeScript frontend.
@@ -162,8 +162,8 @@ The complete Step 7 independent validation audit is deterministic and fully repr
 
 ### Audit Artifacts Verified
 - Validation Script: [`scripts/process_mining/independent_validation_step7.py`](file:///d:/Care%20Flow/scripts/process_mining/independent_validation_step7.py)
-- Validation Report: [`reports/phase3_step7_independent_validation.md`](file:///d:/Care%20Flow/reports/phase3_step7_independent_validation.md)
-- Audited Step 6 Report: [`reports/phase3_performance_bottleneck_analysis.md`](file:///d:/Care%20Flow/reports/phase3_performance_bottleneck_analysis.md)
+- Validation Report: [`reports/independent_validation.md`](file:///d:/Care%20Flow/reports/independent_validation.md)
+- Audited Step 6 Report: [`reports/performance_bottleneck_analysis.md`](file:///d:/Care%20Flow/reports/performance_bottleneck_analysis.md)
 
 ---
 

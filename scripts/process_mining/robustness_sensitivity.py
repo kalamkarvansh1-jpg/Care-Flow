@@ -8,13 +8,13 @@ Inputs:
   - data/raw/careflow_source.csv (immutable)
   - data/processed/cleaned_source.csv (immutable)
   - data/processed/event_log.csv (immutable)
-  - reports/phase3/pathway_models/{category_slug}.pnml (committed Step 3 models)
+  - reports/models/pathway_models/{category_slug}.pnml (committed Step 3 models)
 
 Outputs:
   - data/processed/tie_sensitivity_summary.csv
   - data/processed/tie_sensitivity_variants.csv
   - data/processed/tie_sensitivity_conformance.csv
-  - reports/phase3_robustness_sensitivity.md
+  - reports/robustness_sensitivity.md
 
 Safety & Integrity Rules:
   - Preserves immutable file integrity with pre- and post-execution SHA-256 assertions.
@@ -55,8 +55,8 @@ CLEANED_CSV_PATH = BASE_DIR / "data" / "processed" / "cleaned_source.csv"
 EVENT_LOG_PATH = BASE_DIR / "data" / "processed" / "event_log.csv"
 PROCESSED_DIR = BASE_DIR / "data" / "processed"
 REPORTS_DIR = BASE_DIR / "reports"
-MODELS_DIR = REPORTS_DIR / "phase3" / "pathway_models"
-REPORT_MD_PATH = REPORTS_DIR / "phase3_robustness_sensitivity.md"
+MODELS_DIR = REPORTS_DIR / "models" / "pathway_models"
+REPORT_MD_PATH = REPORTS_DIR / "robustness_sensitivity.md"
 
 SUMMARY_CSV_PATH = PROCESSED_DIR / "tie_sensitivity_summary.csv"
 VARIANTS_CSV_PATH = PROCESSED_DIR / "tie_sensitivity_variants.csv"

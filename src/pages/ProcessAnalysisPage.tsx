@@ -343,8 +343,8 @@ export const ProcessAnalysisPage: React.FC = () => {
                       {incomingTransitions.map((t) => (
                         <li key={t.id} className="flex items-center justify-between">
                           <span className="text-slate-700 truncate pr-2">← {t.from}</span>
-                          <span className="font-mono text-slate-500 shrink-0">
-                            {t.observationCount} cases ({t.medianElapsedMinutes}m)
+                          <span className="font-mono text-slate-500 shrink-0" title={`P90: ${t.p90ElapsedMinutes}m`}>
+                            {t.observationCount} cases ({t.medianElapsedMinutes}m med • P90: {t.p90ElapsedMinutes}m)
                           </span>
                         </li>
                       ))}
@@ -364,8 +364,8 @@ export const ProcessAnalysisPage: React.FC = () => {
                       {outgoingTransitions.map((t) => (
                         <li key={t.id} className="flex items-center justify-between">
                           <span className="text-slate-700 truncate pr-2">→ {t.to}</span>
-                          <span className="font-mono text-slate-500 shrink-0">
-                            {t.percentageOfDepartures}% ({t.medianElapsedMinutes}m)
+                          <span className="font-mono text-slate-500 shrink-0" title={`P90: ${t.p90ElapsedMinutes}m`}>
+                            {t.percentageOfDepartures}% ({t.medianElapsedMinutes}m med • P90: {t.p90ElapsedMinutes}m)
                           </span>
                         </li>
                       ))}
@@ -529,6 +529,7 @@ export const ProcessAnalysisPage: React.FC = () => {
                   <th className="py-2.5 px-3 text-right">Valid Observations</th>
                   <th className="py-2.5 px-3 text-right">Distinct Cases</th>
                   <th className="py-2.5 px-3 text-right">Median Elapsed Time</th>
+                  <th className="py-2.5 px-3 text-right">P90 (90th Percentile)</th>
                   <th className="py-2.5 px-3 text-right">Mean Elapsed Time</th>
                   <th className="py-2.5 px-3 text-center">Observed Latency Tier</th>
                 </tr>
@@ -536,7 +537,7 @@ export const ProcessAnalysisPage: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {filteredBottlenecks.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-xs text-slate-400">
+                    <td colSpan={7} className="py-8 text-center text-xs text-slate-400">
                       No bottleneck transitions recorded in current filtered cohort.
                     </td>
                   </tr>
@@ -555,6 +556,12 @@ export const ProcessAnalysisPage: React.FC = () => {
                       <td className="py-2.5 px-3 text-right font-bold text-slate-900 font-mono">
                         {formatDurationMinutes(b.medianElapsedMinutes)}
                       </td>
+                      <td
+                        className="py-2.5 px-3 text-right font-bold text-rose-700 font-mono"
+                        title={`P90: ${b.p90ElapsedMinutes} minutes`}
+                      >
+                        {formatDurationMinutes(b.p90ElapsedMinutes)}
+                      </td>
                       <td className="py-2.5 px-3 text-right text-slate-600 font-mono">
                         {formatDurationMinutes(b.meanElapsedMinutes)}
                       </td>
@@ -569,7 +576,7 @@ export const ProcessAnalysisPage: React.FC = () => {
                           }`}
                         >
                           {b.severity === 'high'
-                            ? 'High Latency (> 60m)'
+                            ? 'High Latency (> 60m / P90 > 120m)'
                             : b.severity === 'moderate'
                             ? 'Moderate (30-60m)'
                             : 'Nominal'}

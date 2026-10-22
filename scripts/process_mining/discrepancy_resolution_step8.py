@@ -8,10 +8,10 @@ Inputs:
   - data/raw/careflow_source.csv (hash validation only)
   - data/processed/cleaned_source.csv (workflow-category mapping & hash validation)
   - data/processed/event_log.csv (canonical event log & hash validation)
-  - reports/phase3_performance_bottleneck_analysis.md (Step 6 report audit)
-  - reports/phase3_step7_independent_validation.md (Step 7 report audit)
+  - reports/performance_bottleneck_analysis.md (Step 6 report audit)
+  - reports/independent_validation.md (Step 7 report audit)
 Outputs:
-  - reports/phase3_step8_discrepancy_resolution.md
+  - reports/discrepancy_resolution.md
 
 Strict Safety Rules:
   - Does NOT modify raw, cleaned, or canonical event-log CSV files.
@@ -40,9 +40,9 @@ EVENT_LOG_PATH = BASE_DIR / "data" / "processed" / "event_log.csv"
 PROCESSED_DIR = BASE_DIR / "data" / "processed"
 REPORTS_DIR = BASE_DIR / "reports"
 
-STEP6_REPORT_PATH = REPORTS_DIR / "phase3_performance_bottleneck_analysis.md"
-STEP7_REPORT_PATH = REPORTS_DIR / "phase3_step7_independent_validation.md"
-STEP8_REPORT_PATH = REPORTS_DIR / "phase3_step8_discrepancy_resolution.md"
+STEP6_REPORT_PATH = REPORTS_DIR / "performance_bottleneck_analysis.md"
+STEP7_REPORT_PATH = REPORTS_DIR / "independent_validation.md"
+STEP8_REPORT_PATH = REPORTS_DIR / "discrepancy_resolution.md"
 
 EXPECTED_CASES = 49912
 EXPECTED_EVENTS = 142876
@@ -356,7 +356,7 @@ def generate_step8_report(metrics: dict, sample_audit: list) -> str:
         "",
         "## 1. Executive Summary & Audit Verdict",
         "",
-        "Following the independent validation conducted in Phase 3 Step 7 (`reports/phase3_step7_independent_validation.md`), this Step 8 investigation delivers an evidence-based, reproducible mathematical resolution for the three duration discrepancies identified between the Step 6 narrative text and the underlying empirical process data.",
+        "Following the independent validation conducted in Phase 3 Step 7 (`reports/independent_validation.md`), this Step 8 investigation delivers an evidence-based, reproducible mathematical resolution for the three duration discrepancies identified between the Step 6 narrative text and the underlying empirical process data.",
         "",
         "### Final Audit Verdict: Confirmed Numerical Values",
         "",
@@ -408,7 +408,7 @@ def generate_step8_report(metrics: dict, sample_audit: list) -> str:
         f"  - Minimum: `0.0 min` | P25: `53.0 min` | Median: `81.0 min` | P75: `130.0 min` | P90: `230.0 min` | P95: `524.7 min` | Mean: `285.87 min` | Max: `22,083.0 min`",
         "",
         "#### C. Origin Tracing & Forensic Analysis",
-        "1. **Previous Documentation in Step 2:** In Phase 3 Step 2 (`reports/phase3_variant_stratification.md`), Section 6.2 line 171, the 90th percentile of this transition was explicitly computed and published as **`230.0 minutes (3.83 hours)`**.",
+        "1. **Previous Documentation in Step 2:** In Phase 3 Step 2 (`reports/variant_stratification.md`), Section 6.2 line 171, the 90th percentile of this transition was explicitly computed and published as **`230.0 minutes (3.83 hours)`**.",
         "2. **Dynamic Generation vs Hardcoded Prose:** When `scripts/process_mining/performance_bottleneck_analysis.py` was authored, Table 5.2 and Table 7.1 computed the 90th percentile dynamically via `df_trans.quantile(0.90)` (yielding 230.0). However, the narrative template blocks (lines 633 and 970) contained a hardcoded static string: `\"and a 90th percentile of **367.6 minutes** (6.13 hours)\"`.",
         "3. **Origin of `367.6`:** In the empirical dataset, quantile $0.938$ evaluates to $367.33$ minutes, and the maximum observed lab transition duration is $22,083.0$ minutes ($368.05$ hours). An early draft scratch analysis evaluating an ad-hoc percentile or exploratory subset was manually transcribed into the prose template. Crucially, the value `367.6` was never produced by any dynamic calculation in the pipeline.",
         "",
@@ -465,7 +465,7 @@ def generate_step8_report(metrics: dict, sample_audit: list) -> str:
         f"  - Minimum: `0.0 min` | P25: `23.0 min` | Median: `47.0 min` | P75: `89.0 min` | P90: `181.6 min` | P95: `228.3 min` | Mean: `71.91 min`",
         "",
         "#### C. Origin Tracing & Forensic Analysis",
-        "1. **Direct Trace to Step 2 Single-Discipline Pathway:** In Phase 3 Step 2 (`reports/phase3_variant_stratification.md`), Section 5 line 127, this transition was analyzed specifically within the major clinical pathway `Appointment → Prescription → Imaging` ($N=1,242$ cases). In that category, the 90th percentile is exactly **`172.8 minutes`** (which was cited as `172.0 minutes` or `172m` in preliminary summaries and Step 1 line 144).",
+        "1. **Direct Trace to Step 2 Single-Discipline Pathway:** In Phase 3 Step 2 (`reports/variant_stratification.md`), Section 5 line 127, this transition was analyzed specifically within the major clinical pathway `Appointment → Prescription → Imaging` ($N=1,242$ cases). In that category, the 90th percentile is exactly **`172.8 minutes`** (which was cited as `172.0 minutes` or `172m` in preliminary summaries and Step 1 line 144).",
         "2. **Cohort Expansion in Step 6:** In Step 6, the analysis evaluated the entire cohort of $1,588$ encounters, incorporating $288$ transitions from complex multi-category encounters and $58$ from other pathways. Encounters involving multiple departments exhibit longer pre-consultation lead times (P90 = $199.3$ min in multi-department cases), raising the full-cohort P90 from $172.8$ to **`181.6 minutes`**.",
         "3. **Prose Template Retention:** While Step 6 Table 7.1 accurately computed and published `181.6` in the P90 column, the narrative prose template retained the single-pathway value (`172.0 minutes` / `p90 172m`) from the earlier Step 2 study.",
         "",
@@ -531,7 +531,7 @@ def generate_step8_report(metrics: dict, sample_audit: list) -> str:
         "",
         "## 5. Formal Proposed Errata for Step 6 Narrative Text",
         "",
-        "In strict adherence to the project safety constraints, **no historical reports or scripts were modified directly**. Instead, this section documents the exact, line-by-line verbatim adjustments proposed for `reports/phase3_performance_bottleneck_analysis.md` and `scripts/process_mining/performance_bottleneck_analysis.py` whenever the project maintainer authorizes synchronization:",
+        "In strict adherence to the project safety constraints, **no historical reports or scripts were modified directly**. Instead, this section documents the exact, line-by-line verbatim adjustments proposed for `reports/performance_bottleneck_analysis.md` and `scripts/process_mining/performance_bottleneck_analysis.py` whenever the project maintainer authorizes synchronization:",
         "",
         "### Proposed Narrative Modifications (Proposed Errata)",
         "",
@@ -603,7 +603,7 @@ def generate_step8_report(metrics: dict, sample_audit: list) -> str:
         "- **Lead Process Mining Auditor:** Certified Senior Healthcare Data Analyst & Process Mining Lead",
         "- **Audit Status:** **RESOLVED & VERIFIED**",
         "- **Integrity Confidence:** **100% (Cryptographically Verified)**",
-        "- **Artifacts Retained:** `phase3_step8_discrepancy_resolution.md`, `discrepancy_resolution_step8.py`",
+        "- **Artifacts Retained:** `discrepancy_resolution.md`, `discrepancy_resolution_step8.py`",
     ])
 
     return "\n".join(report_lines) + "\n"
@@ -636,7 +636,7 @@ def main():
 
     # Privacy check
     print("\n[3/4] Running automated privacy compliance audit on report content...")
-    assert_no_identifiers(report_content, "phase3_step8_discrepancy_resolution.md")
+    assert_no_identifiers(report_content, "discrepancy_resolution.md")
     print("      ✓ Zero UUIDs, patient keys, or case identifiers detected in report text.")
 
     with open(STEP8_REPORT_PATH, "w", encoding="utf-8") as f:
