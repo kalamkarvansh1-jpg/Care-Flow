@@ -231,12 +231,38 @@ export function extractProcessVariants(cases: CaseSummary[]): ProcessVariant[] {
     const caseCount = variantCases.length;
     const percentage = Math.round((caseCount / cases.length) * 1000) / 10;
     const durations = variantCases.map((c) => c.durationMinutes);
+    const activities = variantCases[0].activitySequence;
+
+    // Step-by-step transition breakdown within this variant
+    const stepTransitions: { from: string; to: string; medianElapsedMinutes: number; p90ElapsedMinutes: number }[] = [];
+    if (activities.length >= 2) {
+      for (let s = 0; s < activities.length - 1; s++) {
+        const fromAct = activities[s];
+        const toAct = activities[s + 1];
+        const stepDurations: number[] = [];
+        for (const vc of variantCases) {
+          if (
+            vc.events[s] &&
+            vc.events[s].elapsedToNextMinutes !== null &&
+            vc.events[s].elapsedToNextMinutes !== undefined
+          ) {
+            stepDurations.push(vc.events[s].elapsedToNextMinutes!);
+          }
+        }
+        stepTransitions.push({
+          from: fromAct,
+          to: toAct,
+          medianElapsedMinutes: Math.round(calculateMedian(stepDurations) * 10) / 10,
+          p90ElapsedMinutes: Math.round(calculatePercentile(stepDurations, 90) * 10) / 10,
+        });
+      }
+    }
 
     variants.push({
       key,
       id: `var-${index}`,
       name: `Variant #${index}`,
-      activities: variantCases[0].activitySequence,
+      activities,
       caseCount,
       percentage,
       medianDurationMinutes: Math.round(calculateMedian(durations)),
@@ -244,6 +270,7 @@ export function extractProcessVariants(cases: CaseSummary[]): ProcessVariant[] {
       minDurationMinutes: Math.round(Math.min(...durations)),
       maxDurationMinutes: Math.round(Math.max(...durations)),
       isMostFrequent: false,
+      stepTransitions,
     });
     index++;
   });
@@ -358,6 +385,9 @@ export function extractTransitions(cases: CaseSummary[]): ActivityTransition[] {
   transitionMap.forEach((item) => {
     const totalFrom = departuresBySource.get(item.from) || item.count;
     const percentageOfDepartures = Math.round((item.count / totalFrom) * 1000) / 10;
+    const zeroDurationCount = item.durations.filter((d) => d === 0).length;
+    const zeroDurationPercentage =
+      item.durations.length > 0 ? Math.round((zeroDurationCount / item.durations.length) * 1000) / 10 : 0;
 
     result.push({
       id: `tr-${index++}`,
@@ -368,6 +398,13 @@ export function extractTransitions(cases: CaseSummary[]): ActivityTransition[] {
       medianElapsedMinutes: Math.round(calculateMedian(item.durations) * 10) / 10,
       meanElapsedMinutes: Math.round(calculateMean(item.durations) * 10) / 10,
       p90ElapsedMinutes: Math.round(calculatePercentile(item.durations, 90) * 10) / 10,
+      p25ElapsedMinutes: Math.round(calculatePercentile(item.durations, 25) * 10) / 10,
+      p75ElapsedMinutes: Math.round(calculatePercentile(item.durations, 75) * 10) / 10,
+      p95ElapsedMinutes: Math.round(calculatePercentile(item.durations, 95) * 10) / 10,
+      minElapsedMinutes: item.durations.length > 0 ? Math.round(Math.min(...item.durations) * 10) / 10 : 0,
+      maxElapsedMinutes: item.durations.length > 0 ? Math.round(Math.max(...item.durations) * 10) / 10 : 0,
+      zeroDurationCount,
+      zeroDurationPercentage,
       percentageOfDepartures,
     });
   });
@@ -403,6 +440,13 @@ export function extractBottlenecks(
       medianElapsedMinutes: tr.medianElapsedMinutes,
       meanElapsedMinutes: tr.meanElapsedMinutes,
       p90ElapsedMinutes: tr.p90ElapsedMinutes,
+      p25ElapsedMinutes: tr.p25ElapsedMinutes,
+      p75ElapsedMinutes: tr.p75ElapsedMinutes,
+      p95ElapsedMinutes: tr.p95ElapsedMinutes,
+      minElapsedMinutes: tr.minElapsedMinutes,
+      maxElapsedMinutes: tr.maxElapsedMinutes,
+      zeroDurationCount: tr.zeroDurationCount,
+      zeroDurationPercentage: tr.zeroDurationPercentage,
       severity,
       explanation: `Observed transition traversed by ${tr.caseCount} distinct cases with ${tr.observationCount} total instances.`,
     });
@@ -576,6 +620,7 @@ export function applyGlobalFilters(
     activity: string;
     variantKey: string;
     department: string;
+    transitionKey?: string;
     startDate?: string;
     endDate?: string;
   }
@@ -605,10 +650,27 @@ export function applyGlobalFilters(
       }
     }
 
-    // 4. Department filter
+    // 4. Department filter (cohort stratification)
     if (filters.department && filters.department !== 'all') {
-      if (c.department !== filters.department) {
+      const matchesDept =
+        c.department === filters.department ||
+        c.events.some((e) => e.department === filters.department);
+      if (!matchesDept) {
         return false;
+      }
+    }
+
+    // 5. Specific transition filter (e.g. "Laboratory Start → Laboratory End")
+    if (filters.transitionKey && filters.transitionKey !== 'all') {
+      const parts = filters.transitionKey.split(' → ');
+      if (parts.length === 2) {
+        const [fromAct, toAct] = parts;
+        const hasTransition = c.events.some(
+          (e, idx) => e.activity === fromAct && c.events[idx + 1]?.activity === toAct
+        );
+        if (!hasTransition) {
+          return false;
+        }
       }
     }
 

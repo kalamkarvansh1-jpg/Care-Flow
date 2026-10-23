@@ -15,6 +15,7 @@ interface ProcessFlowGraphProps {
   cases: CaseSummary[];
   selectedNodeActivity: string | null;
   onSelectNode: (activity: string | null) => void;
+  onSelectTransition?: (transition: ActivityTransition) => void;
   transitionThreshold: number;
 }
 
@@ -48,6 +49,7 @@ export const ProcessFlowGraph: React.FC<ProcessFlowGraphProps> = ({
   cases,
   selectedNodeActivity,
   onSelectNode,
+  onSelectTransition,
   transitionThreshold,
 }) => {
   const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -564,13 +566,24 @@ export const ProcessFlowGraph: React.FC<ProcessFlowGraphProps> = ({
                           strokeWidth={edge.strokeWidth}
                           strokeDasharray={edge.isBackward ? '5 4' : undefined}
                           markerEnd={`url(#${markerId})`}
-                          className="transition-colors duration-200"
+                          className={`transition-colors duration-200 ${onSelectTransition ? 'cursor-pointer hover:stroke-sky-600' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectTransition?.(edge.transition);
+                          }}
                         >
                           <title>{tooltipText}</title>
                         </path>
 
                         {/* Edge Label Badge */}
-                        <g transform={`translate(${edge.labelX}, ${edge.labelY})`}>
+                        <g
+                          transform={`translate(${edge.labelX}, ${edge.labelY})`}
+                          className={onSelectTransition ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectTransition?.(edge.transition);
+                          }}
+                        >
                           <title>{tooltipText}</title>
                           <rect
                             x={badgeX}

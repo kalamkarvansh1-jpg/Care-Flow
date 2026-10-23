@@ -8,12 +8,14 @@ interface BottleneckChartProps {
   bottlenecks: BottleneckItem[];
   height?: number;
   initialMetric?: 'both' | 'median' | 'p90';
+  onSelectBottleneck?: (bottleneck: BottleneckItem) => void;
 }
 
 export const BottleneckChart: React.FC<BottleneckChartProps> = ({
   bottlenecks,
   height = 260,
   initialMetric = 'both',
+  onSelectBottleneck,
 }) => {
   const [metricMode, setMetricMode] = useState<'both' | 'median' | 'p90'>(initialMetric);
   const topBottlenecks = bottlenecks.slice(0, 7);
@@ -67,6 +69,13 @@ export const BottleneckChart: React.FC<BottleneckChartProps> = ({
     indexAxis: 'y' as const,
     responsive: true,
     maintainAspectRatio: false,
+    onClick: (_event, elements) => {
+      if (elements.length > 0 && onSelectBottleneck) {
+        const idx = elements[0].index;
+        const item = topBottlenecks[idx];
+        if (item) onSelectBottleneck(item);
+      }
+    },
     plugins: {
       legend: {
         display: metricMode === 'both',

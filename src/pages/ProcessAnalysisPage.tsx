@@ -15,9 +15,11 @@ import {
   Table,
   BarChart3,
   Calendar,
+  Building,
 } from 'lucide-react';
 import { useDataset } from '../context/useDataset';
 import { CaseDetailDrawer } from '../components/tables/CaseDetailDrawer';
+import { BottleneckDetailDrawer } from '../components/tables/BottleneckDetailDrawer';
 import { BottleneckChart } from '../components/charts/BottleneckChart';
 import { ProcessFlowGraph } from '../components/charts/ProcessFlowGraph';
 import {
@@ -27,7 +29,7 @@ import {
   formatPercentage,
 } from '../lib/formatters';
 import { exportEventsToCSV } from '../lib/dataProcessing';
-import { CaseSummary } from '../types';
+import { CaseSummary, BottleneckItem, ActivityTransition } from '../types';
 
 export const ProcessAnalysisPage: React.FC = () => {
   const {
@@ -48,6 +50,7 @@ export const ProcessAnalysisPage: React.FC = () => {
 
   // Drawer state
   const [selectedCaseSummary, setSelectedCaseSummary] = useState<CaseSummary | null>(null);
+  const [selectedBottleneck, setSelectedBottleneck] = useState<BottleneckItem | null>(null);
 
   // Table pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -147,6 +150,50 @@ export const ProcessAnalysisPage: React.FC = () => {
     return filteredTransitions.filter((t) => t.from === selectedNodeActivity);
   }, [filteredTransitions, selectedNodeActivity]);
 
+  // Extract distinct departments for clinic stratification
+  const allDepartments = useMemo(() => {
+    const set = new Set<string>();
+    allCases.forEach((c) => {
+      if (c.department) set.add(c.department);
+    });
+    return Array.from(set).sort();
+  }, [allCases]);
+
+  // Handler to inspect bottleneck or transition detail
+  const handleSelectTransition = (t: ActivityTransition) => {
+    const match = filteredBottlenecks.find((b) => b.from === t.from && b.to === t.to);
+    if (match) {
+      setSelectedBottleneck(match);
+    } else {
+      setSelectedBottleneck({
+        id: t.id,
+        type: 'transition',
+        from: t.from,
+        to: t.to,
+        label: `${t.from} → ${t.to}`,
+        medianElapsedMinutes: t.medianElapsedMinutes,
+        p90ElapsedMinutes: t.p90ElapsedMinutes,
+        meanElapsedMinutes: t.meanElapsedMinutes,
+        caseCount: t.observationCount,
+        validObservations: t.observationCount,
+        severity:
+          t.medianElapsedMinutes > 60 || t.p90ElapsedMinutes > 120
+            ? 'high'
+            : t.medianElapsedMinutes > 30
+            ? 'moderate'
+            : 'nominal',
+        explanation: `Empirically observed transition between ${t.from} and ${t.to} across ${t.observationCount} cases.`,
+        p25ElapsedMinutes: t.p25ElapsedMinutes,
+        p75ElapsedMinutes: t.p75ElapsedMinutes,
+        p95ElapsedMinutes: t.p95ElapsedMinutes,
+        minElapsedMinutes: t.minElapsedMinutes,
+        maxElapsedMinutes: t.maxElapsedMinutes,
+        zeroDurationCount: t.zeroDurationCount,
+        zeroDurationPercentage: t.zeroDurationPercentage,
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Section A: Page Header & Unified Filters */}
@@ -172,7 +219,7 @@ export const ProcessAnalysisPage: React.FC = () => {
 
         {/* Unified Practical Filter Bar */}
         <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 text-xs">
             {/* Search Case ID */}
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -219,6 +266,24 @@ export const ProcessAnalysisPage: React.FC = () => {
               </select>
             </div>
 
+            {/* Department / Clinic Selector */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5">
+              <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span className="text-slate-400 shrink-0 font-medium">Clinic:</span>
+              <select
+                value={filterState.department}
+                onChange={(e) => updateFilter({ department: e.target.value })}
+                className="bg-transparent font-semibold text-slate-800 w-full focus:outline-hidden cursor-pointer"
+              >
+                <option value="all">All Clinics / Depts</option>
+                {allDepartments.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Date Preset */}
             <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5">
               <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -238,7 +303,7 @@ export const ProcessAnalysisPage: React.FC = () => {
 
           {/* Active Filter Chips & Reset */}
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
-            <div className="flex items-center gap-2 text-slate-500">
+            <div className="flex items-center flex-wrap gap-2 text-slate-500">
               <span className="font-semibold text-slate-700">Active Cohort:</span>
               <span>
                 {formatNumber(filteredCases.length)} of{' '}
@@ -246,13 +311,27 @@ export const ProcessAnalysisPage: React.FC = () => {
                 {formatNumber(sortedEvents.length)} events)
               </span>
               {filterState.activity !== 'all' && (
-                <span className="bg-sky-50 text-sky-700 px-2 py-0.5 rounded border border-sky-200 text-[11px] font-medium">
+                <span className="bg-sky-50 text-sky-700 px-2 py-0.5 rounded border border-sky-200 text-[11px] font-medium flex items-center gap-1">
                   Activity: {filterState.activity}
+                  <button onClick={() => updateFilter({ activity: 'all' })} className="hover:text-sky-900 ml-0.5">×</button>
                 </span>
               )}
               {filterState.variantKey !== 'all' && (
-                <span className="bg-teal-50 text-teal-700 px-2 py-0.5 rounded border border-teal-200 text-[11px] font-medium">
+                <span className="bg-teal-50 text-teal-700 px-2 py-0.5 rounded border border-teal-200 text-[11px] font-medium flex items-center gap-1">
                   Specific Variant
+                  <button onClick={() => updateFilter({ variantKey: 'all' })} className="hover:text-teal-900 ml-0.5">×</button>
+                </span>
+              )}
+              {filterState.department !== 'all' && (
+                <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-200 text-[11px] font-medium flex items-center gap-1">
+                  Clinic: {filterState.department}
+                  <button onClick={() => updateFilter({ department: 'all' })} className="hover:text-purple-900 ml-0.5">×</button>
+                </span>
+              )}
+              {filterState.transitionKey && filterState.transitionKey !== 'all' && (
+                <span className="bg-amber-50 text-amber-800 px-2 py-0.5 rounded border border-amber-200 text-[11px] font-medium flex items-center gap-1">
+                  Transition: {filterState.transitionKey}
+                  <button onClick={() => updateFilter({ transitionKey: 'all' })} className="hover:text-amber-950 ml-0.5">×</button>
                 </span>
               )}
             </div>
@@ -305,6 +384,7 @@ export const ProcessAnalysisPage: React.FC = () => {
             cases={filteredCases}
             selectedNodeActivity={selectedNodeActivity}
             onSelectNode={setSelectedNodeActivity}
+            onSelectTransition={handleSelectTransition}
             transitionThreshold={transitionThreshold}
           />
 
@@ -461,6 +541,36 @@ export const ProcessAnalysisPage: React.FC = () => {
                     </React.Fragment>
                   ))}
                 </div>
+
+                {/* Step Transitions Breakdown */}
+                {variant.stepTransitions && variant.stepTransitions.length > 0 && (
+                  <div className="pt-2 mt-2 border-t border-slate-200/50 flex flex-wrap items-center gap-1.5 text-[10px]">
+                    <span className="text-slate-400 font-medium">Step Transitions (Med / P90):</span>
+                    {variant.stepTransitions.map((st, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const match = filteredBottlenecks.find((b) => b.from === st.from && b.to === st.to);
+                          if (match) {
+                            setSelectedBottleneck(match);
+                          } else {
+                            const tr = filteredTransitions.find((t) => t.from === st.from && t.to === st.to);
+                            if (tr) handleSelectTransition(tr);
+                          }
+                        }}
+                        className="px-2 py-0.5 rounded bg-white hover:bg-sky-50 hover:border-sky-300 border border-slate-200 text-slate-700 transition-colors cursor-pointer flex items-center gap-1"
+                        title="Click to inspect parametric distribution & patient cohort"
+                      >
+                        <span className="font-semibold text-slate-800">{st.from} → {st.to}:</span>
+                        <span className="font-mono text-slate-600">{st.medianElapsedMinutes}m</span>
+                        <span className="text-slate-300">/</span>
+                        <span className="font-mono text-rose-700 font-semibold">{st.p90ElapsedMinutes}m</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           }))}
@@ -517,7 +627,11 @@ export const ProcessAnalysisPage: React.FC = () => {
 
         {bottleneckView === 'chart' ? (
           <div className="pt-2">
-            <BottleneckChart bottlenecks={filteredBottlenecks} height={260} />
+            <BottleneckChart
+              bottlenecks={filteredBottlenecks}
+              height={260}
+              onSelectBottleneck={setSelectedBottleneck}
+            />
           </div>
         ) : (
           /* Ranked Table */
@@ -532,20 +646,26 @@ export const ProcessAnalysisPage: React.FC = () => {
                   <th className="py-2.5 px-3 text-right">P90 (90th Percentile)</th>
                   <th className="py-2.5 px-3 text-right">Mean Elapsed Time</th>
                   <th className="py-2.5 px-3 text-center">Observed Latency Tier</th>
+                  <th className="py-2.5 px-3 text-right">Inspect</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredBottlenecks.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-xs text-slate-400">
+                    <td colSpan={8} className="py-8 text-center text-xs text-slate-400">
                       No bottleneck transitions recorded in current filtered cohort.
                     </td>
                   </tr>
                 ) : (
                   filteredBottlenecks.slice(0, 8).map((b) => (
-                    <tr key={b.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-2.5 px-3 font-semibold text-slate-900">
-                        {b.label}
+                    <tr
+                      key={b.id}
+                      onClick={() => setSelectedBottleneck(b)}
+                      className="hover:bg-amber-50/50 transition-colors cursor-pointer group"
+                    >
+                      <td className="py-2.5 px-3 font-semibold text-slate-900 group-hover:text-amber-900 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span>{b.label}</span>
                       </td>
                       <td className="py-2.5 px-3 text-right text-slate-600 font-mono">
                         {b.validObservations.toLocaleString()}
@@ -580,6 +700,11 @@ export const ProcessAnalysisPage: React.FC = () => {
                             : b.severity === 'moderate'
                             ? 'Moderate (30-60m)'
                             : 'Nominal'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        <span className="text-amber-600 group-hover:text-amber-800 text-[11px] font-medium inline-flex items-center gap-0.5">
+                          Inspect &rarr;
                         </span>
                       </td>
                     </tr>
@@ -764,6 +889,19 @@ export const ProcessAnalysisPage: React.FC = () => {
       <CaseDetailDrawer
         caseSummary={selectedCaseSummary}
         onClose={() => setSelectedCaseSummary(null)}
+      />
+
+      {/* Bottleneck Detail Drawer (Phase 4 Step 4: Parametric distribution, zero-duration concurrency, cohort isolation) */}
+      <BottleneckDetailDrawer
+        bottleneck={selectedBottleneck}
+        cases={filteredCases}
+        onClose={() => setSelectedBottleneck(null)}
+        onFilterToTransition={(transitionKey) => {
+          updateFilter({ transitionKey });
+        }}
+        onSelectCase={(caseSummary) => {
+          setSelectedCaseSummary(caseSummary);
+        }}
       />
     </div>
   );

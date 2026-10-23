@@ -25,6 +25,7 @@ const defaultFilterState: GlobalFilterState = {
   activity: 'all',
   variantKey: 'all',
   department: 'all',
+  transitionKey: 'all',
 };
 
 export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -92,6 +93,7 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (filterState.activity !== 'all') count++;
     if (filterState.variantKey !== 'all') count++;
     if (filterState.department !== 'all') count++;
+    if (filterState.transitionKey && filterState.transitionKey !== 'all') count++;
     return count;
   }, [filterState]);
 
@@ -124,6 +126,7 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
       activity: filterState.activity,
       variantKey: filterState.variantKey,
       department: filterState.department,
+      transitionKey: filterState.transitionKey,
       startDate: effectiveStartDate,
       endDate: effectiveEndDate,
     });

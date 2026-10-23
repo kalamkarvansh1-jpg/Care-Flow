@@ -42,6 +42,13 @@ export interface CaseSummary {
   status?: string;
 }
 
+export interface ProcessVariantStep {
+  from: string;
+  to: string;
+  medianElapsedMinutes: number;
+  p90ElapsedMinutes: number;
+}
+
 export interface ProcessVariant {
   key: string;
   id: string;
@@ -54,6 +61,7 @@ export interface ProcessVariant {
   minDurationMinutes: number;
   maxDurationMinutes: number;
   isMostFrequent: boolean;
+  stepTransitions?: ProcessVariantStep[];
 }
 
 export interface ActivityTransition {
@@ -65,6 +73,13 @@ export interface ActivityTransition {
   medianElapsedMinutes: number;
   meanElapsedMinutes: number;
   p90ElapsedMinutes: number;
+  p25ElapsedMinutes?: number;
+  p75ElapsedMinutes?: number;
+  p95ElapsedMinutes?: number;
+  minElapsedMinutes?: number;
+  maxElapsedMinutes?: number;
+  zeroDurationCount?: number;
+  zeroDurationPercentage?: number;
   percentageOfDepartures: number;
 }
 
@@ -88,6 +103,13 @@ export interface BottleneckItem {
   medianElapsedMinutes: number;
   meanElapsedMinutes: number;
   p90ElapsedMinutes: number;
+  p25ElapsedMinutes?: number;
+  p75ElapsedMinutes?: number;
+  p95ElapsedMinutes?: number;
+  minElapsedMinutes?: number;
+  maxElapsedMinutes?: number;
+  zeroDurationCount?: number;
+  zeroDurationPercentage?: number;
   severity: 'high' | 'moderate' | 'nominal';
   explanation: string;
 }
@@ -136,6 +158,7 @@ export interface GlobalFilterState {
   activity: string; // 'all' or specific activity name
   variantKey: string; // 'all' or specific variant key
   department: string; // 'all' or specific department
+  transitionKey?: string; // 'all' or "FromActivity -> ToActivity"
 }
 
 export interface CalculatedMetrics {
