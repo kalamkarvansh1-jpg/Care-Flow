@@ -165,9 +165,16 @@ export interface CalculatedMetrics {
   totalCases: number;
   totalEvents: number;
   medianCaseDurationMinutes: number;
+  meanCaseDurationMinutes: number;
+  p90CaseDurationMinutes: number;
+  minCaseDurationMinutes: number;
+  maxCaseDurationMinutes: number;
   distinctVariantsCount: number;
+  uniqueActivitiesCount: number;
   averageEventsPerCase: number;
   activeFilterCount: number;
+  zeroDurationCasesCount: number;
+  zeroDurationCasesPercentage: number;
 }
 
 export interface ExecutiveReportParams {

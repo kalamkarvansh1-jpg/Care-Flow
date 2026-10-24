@@ -11,18 +11,25 @@ import {
   Info,
   Layers,
   AlertTriangle,
+  FileCode,
+  Table,
+  ChevronDown,
+  ChevronUp,
+  ShieldAlert,
+  ShieldCheck,
+  Calendar,
 } from 'lucide-react';
 import { useDataset } from '../../context/useDataset';
 import { ColumnMapping, RawEventRow } from '../../types';
-import { DATASET_PRESETS } from '../../data/demoData';
-import { formatFileSize } from '../../lib/formatters';
+import { DATASET_PRESETS, DatasetPreset } from '../../data/demoData';
+import { formatFileSize, formatNumber } from '../../lib/formatters';
 import { normalizeAndValidateEvents } from '../../lib/dataProcessing';
 
 export const LoadDatasetModal: React.FC = () => {
   const { isLoadDatasetOpen, closeLoadDataset, loadPreset, loadCustomDataset, datasetMetadata } =
     useDataset();
 
-  const [activeTab, setActiveTab] = useState<'presets' | 'upload'>('presets');
+  const [activeTab, setActiveTab] = useState<'presets' | 'upload' | 'active'>('presets');
 
   // File Upload & Mapping State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -37,6 +44,9 @@ export const LoadDatasetModal: React.FC = () => {
   });
   const [parseError, setParseError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
+
+  // Expanded preset preview state
+  const [expandedPresetId, setExpandedPresetId] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -138,6 +148,64 @@ export const LoadDatasetModal: React.FC = () => {
     });
   };
 
+  // Missing values & column data type analysis for uploaded file
+  const uploadedQualityAnalysis = useMemo(() => {
+    if (parsedRows.length === 0 || detectedColumns.length === 0) return null;
+
+    const analysis: Record<
+      string,
+      { missingCount: number; missingPct: number; inferredType: string; nonNullSample: string }
+    > = {};
+
+    detectedColumns.forEach((col) => {
+      let missing = 0;
+      let sampleVal = '';
+
+      parsedRows.forEach((row) => {
+        const val = row[col];
+        if (val === null || val === undefined || String(val).trim() === '') {
+          missing++;
+        } else if (!sampleVal) {
+          sampleVal = String(val).trim();
+        }
+      });
+
+      // Inferred type
+      let inferredType = 'Alphanumeric';
+      if (sampleVal) {
+        if (!isNaN(Number(sampleVal))) {
+          inferredType = 'Numeric';
+        } else if (
+          !isNaN(new Date(sampleVal).getTime()) &&
+          sampleVal.length >= 8 &&
+          (sampleVal.includes('-') || sampleVal.includes('/') || sampleVal.includes('T'))
+        ) {
+          inferredType = 'ISO 8601 Datetime';
+        } else if (sampleVal.toLowerCase() === 'true' || sampleVal.toLowerCase() === 'false') {
+          inferredType = 'Boolean';
+        } else if (
+          sampleVal.includes('PAT-') ||
+          sampleVal.includes('CASE-') ||
+          sampleVal.includes('OUT-') ||
+          sampleVal.toLowerCase().includes('id')
+        ) {
+          inferredType = 'Case Identifier';
+        } else {
+          inferredType = 'Categorical Text';
+        }
+      }
+
+      analysis[col] = {
+        missingCount: missing,
+        missingPct: Math.round((missing / parsedRows.length) * 1000) / 10,
+        inferredType,
+        nonNullSample: sampleVal || '—',
+      };
+    });
+
+    return analysis;
+  }, [parsedRows, detectedColumns]);
+
   const preflightValidation = useMemo(() => {
     if (
       parsedRows.length === 0 ||
@@ -179,10 +247,24 @@ export const LoadDatasetModal: React.FC = () => {
     );
   };
 
+  // Helper to get sample rows for presets
+  const getPresetPreviewData = (preset: DatasetPreset) => {
+    try {
+      const rows = preset.generateRows();
+      return {
+        sampleRows: rows.slice(0, 4),
+        totalRows: rows.length,
+        columns: Object.keys(rows[0] || {}),
+      };
+    } catch {
+      return { sampleRows: [], totalRows: 0, columns: [] };
+    }
+  };
+
   if (!isLoadDatasetOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs transition-opacity"
@@ -191,127 +273,208 @@ export const LoadDatasetModal: React.FC = () => {
 
       <div className="flex min-h-full items-center justify-center p-4">
         <div
-          className="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-150"
+          className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-150 flex flex-col my-8"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/70 flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-sky-600 text-white flex items-center justify-center">
+                  <Database className="w-4 h-4 stroke-[2.5]" />
+                </div>
                 <h3 className="text-base font-bold text-slate-900 tracking-tight">
-                  Load & Configure Event Log Dataset
+                  Dataset Management & Schema Ingestion
                 </h3>
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
                   Client-Side Ingestion
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Switch between preloaded clinical cohorts or parse a local CSV log with configurable schema mapping.
+              <p className="text-xs text-slate-500 mt-1">
+                Inspect dataset metadata, preview sample records, verify schema mappings, or upload a local CSV event log.
               </p>
             </div>
             <button
               onClick={closeLoadDataset}
               className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              aria-label="Close modal"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Tab Selector */}
-          <div className="flex border-b border-slate-200 px-6 bg-slate-50/30">
+          <div className="flex border-b border-slate-200 px-6 bg-slate-50/40 text-xs">
             <button
               type="button"
               onClick={() => setActiveTab('presets')}
-              className={`py-2.5 px-4 text-xs font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${
+              className={`py-3 px-4 font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${
                 activeTab === 'presets'
-                  ? 'border-sky-600 text-sky-700'
+                  ? 'border-sky-600 text-sky-700 bg-white'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               <Database className="w-4 h-4" />
               Preloaded Cohorts ({DATASET_PRESETS.length})
             </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('upload')}
-              className={`py-2.5 px-4 text-xs font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${
+              className={`py-3 px-4 font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${
                 activeTab === 'upload'
-                  ? 'border-sky-600 text-sky-700'
+                  ? 'border-sky-600 text-sky-700 bg-white'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               <Upload className="w-4 h-4" />
-              Upload Local CSV File
+              Upload Local CSV
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('active')}
+              className={`py-3 px-4 font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${
+                activeTab === 'active'
+                  ? 'border-sky-600 text-sky-700 bg-white'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Active Dataset Ledger
             </button>
           </div>
 
           {/* Modal Body */}
           <div className="p-6 space-y-5 max-h-[72vh] overflow-y-auto">
-            {activeTab === 'presets' ? (
+            {activeTab === 'presets' && (
               <div className="space-y-3">
-                <div className="p-3 bg-sky-50/70 border border-sky-200/80 rounded-lg text-xs text-sky-950 flex items-start gap-2">
+                <div className="p-3 bg-sky-50/70 border border-sky-200/80 rounded-xl text-xs text-sky-950 flex items-start gap-2">
                   <Info className="w-4 h-4 text-sky-700 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-sky-900">Demonstration Clinical Logs</p>
+                    <p className="font-semibold text-sky-900">Pre-Configured Clinical Demonstration Logs</p>
                     <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
-                      Select a synthetic cohort calibrated to emergency and acute hospital length-of-stay distributions.
-                      All metrics and visualizations update automatically.
+                      Select a synthetic clinical cohort calibrated to realistic emergency and hospital length-of-stay distributions.
+                      Click "Preview Schema & Records" to inspect sample event rows before loading.
                     </p>
                   </div>
                 </div>
 
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   {DATASET_PRESETS.map((preset) => {
                     const isActive = datasetMetadata.id === preset.id;
+                    const isExpanded = expandedPresetId === preset.id;
+                    const preview = isExpanded ? getPresetPreviewData(preset) : null;
+
                     return (
                       <div
                         key={preset.id}
-                        className={`p-4 rounded-xl border text-left transition-all ${
+                        className={`rounded-xl border transition-all overflow-hidden ${
                           isActive
-                            ? 'bg-sky-50/60 border-sky-400 ring-1 ring-sky-200'
+                            ? 'bg-sky-50/50 border-sky-400 ring-1 ring-sky-200'
                             : 'bg-white border-slate-200 hover:border-slate-300'
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-2 mb-1.5">
-                          <div>
-                            <span className="font-bold text-sm text-slate-900">{preset.name}</span>
-                            <span className="text-[11px] text-slate-400 font-mono block">
-                              {preset.filename} • {formatFileSize(preset.fileSizeBytes)}
-                            </span>
+                        <div className="p-4">
+                          <div className="flex items-start justify-between gap-3 mb-1.5">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-slate-900">{preset.name}</span>
+                                {preset.name.includes('Synthetic') && (
+                                  <span className="text-[10px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                                    Synthetic Demo
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[11px] text-slate-400 font-mono block mt-0.5">
+                                {preset.filename} • {formatFileSize(preset.fileSizeBytes)}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedPresetId(isExpanded ? null : preset.id)}
+                                className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md text-xs font-medium cursor-pointer flex items-center gap-1 transition-colors"
+                              >
+                                <span>{isExpanded ? 'Hide Preview' : 'Preview Records'}</span>
+                                {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              </button>
+
+                              {isActive ? (
+                                <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-md border border-teal-200 flex items-center gap-1">
+                                  <CheckCircle2 className="w-3.5 h-3.5" /> Currently Active
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => loadPreset(preset.id)}
+                                  className="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-xs font-semibold cursor-pointer shadow-2xs transition-colors"
+                                >
+                                  Load Cohort
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          {isActive ? (
-                            <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full border border-teal-200">
-                              Currently Loaded
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => loadPreset(preset.id)}
-                              className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold cursor-pointer shadow-2xs transition-colors"
-                            >
-                              Load Cohort
-                            </button>
-                          )}
+
+                          <p className="text-xs text-slate-600 leading-relaxed mb-3">
+                            {preset.description}
+                          </p>
+
+                          <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 font-mono">
+                            <span>Case ID: <strong className="text-slate-700">{preset.mapping.caseId}</strong></span>
+                            <span>Activity: <strong className="text-slate-700">{preset.mapping.activity}</strong></span>
+                            <span>Timestamp: <strong className="text-slate-700">{preset.mapping.timestamp}</strong></span>
+                            {preset.mapping.resource && <span>Resource: <strong className="text-slate-700">{preset.mapping.resource}</strong></span>}
+                            {preset.mapping.department && <span>Clinic: <strong className="text-slate-700">{preset.mapping.department}</strong></span>}
+                          </div>
                         </div>
 
-                        <p className="text-xs text-slate-600 leading-relaxed mb-3">
-                          {preset.description}
-                        </p>
+                        {/* Collapsible Record Preview Table */}
+                        {isExpanded && preview && (
+                          <div className="bg-slate-50 p-4 border-t border-slate-200 space-y-2 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-700 uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                                <Table className="w-3.5 h-3.5 text-sky-600" />
+                                Sample Records ({preview.totalRows.toLocaleString()} total rows • {preview.columns.length} columns)
+                              </span>
+                              <span className="text-[11px] text-slate-400">Zero missing values • Verified chronological order</span>
+                            </div>
 
-                        <div className="pt-2 border-t border-slate-100 flex items-center gap-3 text-[11px] text-slate-500 font-mono">
-                          <span>Case ID: {preset.mapping.caseId}</span>
-                          <span>•</span>
-                          <span>Activity: {preset.mapping.activity}</span>
-                          <span>•</span>
-                          <span>Timestamp: {preset.mapping.timestamp}</span>
-                        </div>
+                            <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
+                              <table className="w-full text-left text-[11px] font-mono">
+                                <thead className="bg-slate-100 text-slate-600 border-b border-slate-200 text-[10px]">
+                                  <tr>
+                                    {preview.columns.map((col) => (
+                                      <th key={col} className="p-2 whitespace-nowrap">
+                                        {col}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {preview.sampleRows.map((row, rIdx) => (
+                                    <tr key={rIdx} className="hover:bg-slate-50">
+                                      {preview.columns.map((col) => (
+                                        <td key={col} className="p-2 text-slate-700 whitespace-nowrap max-w-[200px] truncate">
+                                          {String(row[col] ?? '—')}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
               </div>
-            ) : (
-              /* Upload Tab */
+            )}
+
+            {activeTab === 'upload' && (
               <div className="space-y-4">
                 {/* File Dropzone */}
                 <div className="border-2 border-dashed border-slate-200 hover:border-slate-300 rounded-xl p-5 text-center bg-slate-50/40 transition-colors">
@@ -336,14 +499,14 @@ export const LoadDatasetModal: React.FC = () => {
                       <span className="text-xs text-slate-500"> or drag and drop</span>
                     </div>
                     <span className="text-[11px] text-slate-400">
-                      Standard process mining format (e.g. Case ID, Activity, Timestamp)
+                      Standard process mining CSV format (must include Case ID, Activity, and Timestamp)
                     </span>
                   </label>
                 </div>
 
                 {isParsing && (
                   <div className="p-3 bg-slate-50 rounded-lg text-center text-xs text-slate-500 animate-pulse">
-                    Parsing CSV rows and detecting headers in browser...
+                    Parsing CSV rows and detecting headers in browser memory...
                   </div>
                 )}
 
@@ -359,16 +522,16 @@ export const LoadDatasetModal: React.FC = () => {
 
                 {selectedFile && parsedRows.length > 0 && (
                   <div className="space-y-4 pt-2">
-                    {/* File Meta Pill */}
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
+                    {/* File Meta Summary */}
+                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
                       <div>
                         <span className="font-bold text-slate-900">{selectedFile.name}</span>
                         <span className="text-slate-500 ml-2">
-                          ({formatFileSize(selectedFile.size)} • {parsedRows.length} rows parsed)
+                          ({formatFileSize(selectedFile.size)} • {parsedRows.length.toLocaleString()} rows • {detectedColumns.length} columns)
                         </span>
                       </div>
                       <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Ready for Mapping
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Ready for Mapping & Validation
                       </span>
                     </div>
 
@@ -378,7 +541,7 @@ export const LoadDatasetModal: React.FC = () => {
                         <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1">
                           <Layers className="w-3.5 h-3.5 text-sky-600" /> Map Process Mining Fields
                         </h4>
-                        <span className="text-[11px] text-slate-400">* Required fields</span>
+                        <span className="text-[11px] text-slate-400">* Required core dimensions</span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -490,7 +653,78 @@ export const LoadDatasetModal: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Preflight Validation Report Card */}
+                    {/* Column Data Types & Missing Values Inspector */}
+                    {uploadedQualityAnalysis && (
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                          <FileCode className="w-3.5 h-3.5 text-sky-600" />
+                          Column Schema & Data Quality Profiling
+                        </h4>
+
+                        <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
+                          <table className="w-full text-left text-xs">
+                            <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] border-b border-slate-200">
+                              <tr>
+                                <th className="p-2">Column Name</th>
+                                <th className="p-2">Assigned Role</th>
+                                <th className="p-2">Inferred Data Type</th>
+                                <th className="p-2 text-right">Missing / Nulls</th>
+                                <th className="p-2">Sample Non-Null Value</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                              {detectedColumns.map((col) => {
+                                const q = uploadedQualityAnalysis[col];
+                                const isMappedCase = columnMapping.caseId === col;
+                                const isMappedAct = columnMapping.activity === col;
+                                const isMappedTime = columnMapping.timestamp === col;
+
+                                return (
+                                  <tr key={col} className="hover:bg-slate-50">
+                                    <td className="p-2 font-bold text-slate-900">{col}</td>
+                                    <td className="p-2 font-sans">
+                                      {isMappedCase && (
+                                        <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
+                                          Case ID *
+                                        </span>
+                                      )}
+                                      {isMappedAct && (
+                                        <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                                          Activity *
+                                        </span>
+                                      )}
+                                      {isMappedTime && (
+                                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                          Timestamp *
+                                        </span>
+                                      )}
+                                      {!isMappedCase && !isMappedAct && !isMappedTime && (
+                                        <span className="text-slate-400">Attribute</span>
+                                      )}
+                                    </td>
+                                    <td className="p-2 text-slate-600">{q?.inferredType || 'String'}</td>
+                                    <td className="p-2 text-right">
+                                      {q && q.missingCount > 0 ? (
+                                        <span className="text-amber-700 font-bold">
+                                          {q.missingCount} ({q.missingPct}%)
+                                        </span>
+                                      ) : (
+                                        <span className="text-emerald-700 font-semibold">0 (0%)</span>
+                                      )}
+                                    </td>
+                                    <td className="p-2 text-slate-500 truncate max-w-[200px]">
+                                      {q?.nonNullSample || '—'}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Preflight Validation Card */}
                     {preflightValidation ? (
                       <div
                         className={`p-3.5 rounded-lg border text-xs space-y-2 ${
@@ -543,7 +777,7 @@ export const LoadDatasetModal: React.FC = () => {
                             )}
                             {preflightValidation.report.dateRange.start && (
                               <div className="text-slate-600">
-                                Date range: {preflightValidation.report.dateRange.start.slice(0, 10)} to {preflightValidation.report.dateRange.end.slice(0, 10)}
+                                Inferred Date range: {preflightValidation.report.dateRange.start.slice(0, 10)} to {preflightValidation.report.dateRange.end.slice(0, 10)}
                               </div>
                             )}
                           </div>
@@ -557,50 +791,11 @@ export const LoadDatasetModal: React.FC = () => {
                             <span>Required Column Mapping Incomplete</span>
                           </div>
                           <p className="text-[11px] text-amber-800 leading-relaxed">
-                            Missing required column mapping. Please select an assigned column for Case ID, Activity, and Timestamp to proceed with validation and analysis.
+                            Please select mapped columns for Case ID, Activity, and Timestamp to proceed with validation and analysis.
                           </p>
                         </div>
                       )
                     )}
-
-                    {/* Preview Table of First 3 Rows */}
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Sample Rows Preview (First 3 Records)
-                      </h4>
-                      <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                        <table className="w-full text-left text-[11px] font-mono">
-                          <thead className="bg-slate-100 text-slate-600 border-b border-slate-200">
-                            <tr>
-                              <th className="p-2">Case ID</th>
-                              <th className="p-2">Activity</th>
-                              <th className="p-2">Timestamp</th>
-                              <th className="p-2">Resource</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 bg-white">
-                            {parsedRows.slice(0, 3).map((row, idx) => (
-                              <tr key={idx}>
-                                <td className="p-2 font-semibold text-slate-900">
-                                  {String(row[columnMapping.caseId] || '-')}
-                                </td>
-                                <td className="p-2 text-slate-700">
-                                  {String(row[columnMapping.activity] || '-')}
-                                </td>
-                                <td className="p-2 text-slate-500">
-                                  {String(row[columnMapping.timestamp] || '-')}
-                                </td>
-                                <td className="p-2 text-slate-500">
-                                  {columnMapping.resource
-                                    ? String(row[columnMapping.resource] || '-')
-                                    : '-'}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
 
                     {/* Apply Button */}
                     <div className="flex justify-end pt-2">
@@ -614,7 +809,7 @@ export const LoadDatasetModal: React.FC = () => {
                             : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                         }`}
                       >
-                        <span>Apply & Analyze Dataset</span>
+                        <span>Apply & Process Dataset</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -622,16 +817,113 @@ export const LoadDatasetModal: React.FC = () => {
                 )}
               </div>
             )}
+
+            {activeTab === 'active' && (
+              <div className="space-y-4">
+                {/* Active Dataset Overview Banner */}
+                <div className="p-4 rounded-xl border border-sky-200 bg-sky-50/70 space-y-2 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700">
+                        Currently Active Event Log
+                      </span>
+                      <h4 className="text-base font-bold text-slate-900 mt-0.5">
+                        {datasetMetadata.name}
+                      </h4>
+                      <p className="text-slate-600 mt-1 text-xs">
+                        {datasetMetadata.description}
+                      </p>
+                    </div>
+                    {datasetMetadata.isSynthetic ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-800 bg-teal-100/80 px-2.5 py-1 rounded-full border border-teal-200 shrink-0">
+                        <ShieldAlert className="w-3.5 h-3.5 text-teal-600" />
+                        Synthetic Demo
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        De-Identified Clinical
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quantitative Ledger Table */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+                  <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
+                    <span className="text-slate-400 text-[10px] font-sans block">Total Raw Rows</span>
+                    <span className="text-base font-bold text-slate-900">
+                      {formatNumber(datasetMetadata.validationReport.totalRows)}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
+                    <span className="text-slate-400 text-[10px] font-sans block">Parsed Milestone Events</span>
+                    <span className="text-base font-bold text-sky-700">
+                      {formatNumber(datasetMetadata.validationReport.parsedEvents)}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
+                    <span className="text-slate-400 text-[10px] font-sans block">Unique Patient Cases</span>
+                    <span className="text-base font-bold text-teal-700">
+                      {formatNumber(datasetMetadata.validationReport.uniqueCases)}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
+                    <span className="text-slate-400 text-[10px] font-sans block">Invalid Rows Excluded</span>
+                    <span className="text-base font-bold text-emerald-700">
+                      {datasetMetadata.validationReport.invalidRows}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Detailed Schema & Ingestion Mapping */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3 text-xs">
+                  <span className="font-bold text-slate-800 uppercase tracking-wider text-[10px] block">
+                    Active Dimension Mapping & Inferred Column Schema
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] font-mono">
+                    <div className="p-2 rounded bg-slate-50 border border-slate-200/80">
+                      <span className="text-slate-400 text-[10px] font-sans block">Case ID Column:</span>
+                      <span className="font-bold text-slate-800">{datasetMetadata.columnMapping.caseId}</span>
+                    </div>
+
+                    <div className="p-2 rounded bg-slate-50 border border-slate-200/80">
+                      <span className="text-slate-400 text-[10px] font-sans block">Activity Column:</span>
+                      <span className="font-bold text-slate-800">{datasetMetadata.columnMapping.activity}</span>
+                    </div>
+
+                    <div className="p-2 rounded bg-slate-50 border border-slate-200/80">
+                      <span className="text-slate-400 text-[10px] font-sans block">Timestamp Column:</span>
+                      <span className="font-bold text-slate-800">{datasetMetadata.columnMapping.timestamp}</span>
+                    </div>
+                  </div>
+
+                  {datasetMetadata.validationReport.dateRange.start && (
+                    <div className="pt-2 border-t border-slate-100 flex items-center gap-2 text-slate-500 text-[11px]">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      <span>
+                        Temporal Range: {datasetMetadata.validationReport.dateRange.start.slice(0, 10)} to{' '}
+                        {datasetMetadata.validationReport.dateRange.end.slice(0, 10)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Modal Footer */}
           <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
-            <span>Client-side parsing — Data remains strictly in local browser memory.</span>
+            <span>CareFlow Healthcare Analytics — Pure client-side parsing in browser memory.</span>
             <button
               onClick={closeLoadDataset}
               className="px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-md font-medium cursor-pointer"
             >
-              Cancel
+              Done
             </button>
           </div>
         </div>

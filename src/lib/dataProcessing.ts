@@ -715,14 +715,29 @@ export function computeSummaryMetrics(
 ): CalculatedMetrics {
   const durations = cases.map((c) => c.durationMinutes);
   const distinctVariants = new Set(cases.map((c) => c.variantKey)).size;
+  const uniqueActivities = new Set(events.map((e) => e.activity)).size;
+  const zeroDurations = durations.filter((d) => d === 0).length;
 
   return {
     totalCases: cases.length,
     totalEvents: events.length,
     medianCaseDurationMinutes: Math.round(calculateMedian(durations)),
+    meanCaseDurationMinutes:
+      cases.length > 0 ? Math.round(calculateMean(durations) * 10) / 10 : 0,
+    p90CaseDurationMinutes:
+      cases.length > 0 ? Math.round(calculatePercentile(durations, 90) * 10) / 10 : 0,
+    minCaseDurationMinutes:
+      durations.length > 0 ? Math.round(durations.reduce((min, d) => (d < min ? d : min), durations[0])) : 0,
+    maxCaseDurationMinutes:
+      durations.length > 0 ? Math.round(durations.reduce((max, d) => (d > max ? d : max), durations[0])) : 0,
     distinctVariantsCount: distinctVariants,
-    averageEventsPerCase: cases.length > 0 ? Math.round((events.length / cases.length) * 10) / 10 : 0,
+    uniqueActivitiesCount: uniqueActivities,
+    averageEventsPerCase:
+      cases.length > 0 ? Math.round((events.length / cases.length) * 10) / 10 : 0,
     activeFilterCount,
+    zeroDurationCasesCount: zeroDurations,
+    zeroDurationCasesPercentage:
+      cases.length > 0 ? Math.round((zeroDurations / cases.length) * 1000) / 10 : 0,
   };
 }
 
@@ -1074,9 +1089,13 @@ ${syntheticNotice}
 | :--- | :---: | :--- |
 | **Total Filtered Cases** | **${casesCount.toLocaleString()}** | Distinct patient encounters eligible under current filter criteria |
 | **Total Filtered Events** | **${eventsCount.toLocaleString()}** | Clinical milestone events with valid timestamps and activities |
+| **Unique Clinical Activities** | **${metrics.uniqueActivitiesCount}** | Distinct clinical milestones recorded across active encounters |
 | **Average Events per Case** | **${metrics.averageEventsPerCase}** | Encounter complexity / step depth ratio |
 | **Median Case Duration** | **${metrics.medianCaseDurationMinutes} min** | 50th percentile admission-to-disposition elapsed time |
+| **Mean Case Duration** | **${metrics.meanCaseDurationMinutes} min** | Arithmetic mean admission-to-disposition elapsed time |
+| **90th-Percentile (P90) Duration** | **${metrics.p90CaseDurationMinutes} min** | Right-skewed tail threshold for prolonged encounters |
 | **Distinct Observed Variants** | **${metrics.distinctVariantsCount}** | Number of unique end-to-end activity sequences |
+| **Zero-Duration Encounters** | **${metrics.zeroDurationCasesCount} (${metrics.zeroDurationCasesPercentage}%)** | Cases with simultaneous start and disposition timestamps |
 | **Active Global Filters** | **${metrics.activeFilterCount} active** | Active cohort stratification rules |
 
 ### Active Stratification Filters
@@ -1173,10 +1192,17 @@ export function exportCohortReportJSON(params: ExecutiveReportParams): string {
     summaryMetrics: {
       totalCases: casesCount,
       totalEvents: eventsCount,
+      uniqueActivitiesCount: metrics.uniqueActivitiesCount,
       averageEventsPerCase: metrics.averageEventsPerCase,
       medianCaseDurationMinutes: metrics.medianCaseDurationMinutes,
+      meanCaseDurationMinutes: metrics.meanCaseDurationMinutes,
+      p90CaseDurationMinutes: metrics.p90CaseDurationMinutes,
+      minCaseDurationMinutes: metrics.minCaseDurationMinutes,
+      maxCaseDurationMinutes: metrics.maxCaseDurationMinutes,
       distinctVariantsCount: metrics.distinctVariantsCount,
       activeFilterCount: metrics.activeFilterCount,
+      zeroDurationCasesCount: metrics.zeroDurationCasesCount,
+      zeroDurationCasesPercentage: metrics.zeroDurationCasesPercentage,
     },
     variants: variants.map((v) => ({
       id: v.id,

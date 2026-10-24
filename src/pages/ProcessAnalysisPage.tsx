@@ -16,6 +16,7 @@ import {
   BarChart3,
   Calendar,
   Building,
+  Network,
 } from 'lucide-react';
 import { useDataset } from '../context/useDataset';
 import { CaseDetailDrawer } from '../components/tables/CaseDetailDrawer';
@@ -43,6 +44,7 @@ export const ProcessAnalysisPage: React.FC = () => {
     filteredActivityMetrics,
     filteredTransitions,
     filteredBottlenecks,
+    filteredMetrics,
     filterState,
     updateFilter,
     resetFilters,
@@ -65,8 +67,35 @@ export const ProcessAnalysisPage: React.FC = () => {
   const [selectedNodeActivity, setSelectedNodeActivity] = useState<string | null>(null);
   const [transitionThreshold, setTransitionThreshold] = useState<number>(0); // 0 = all, 10 = >=10%
 
-  // Bottleneck view toggle (Table vs Chart)
-  const [bottleneckView, setBottleneckView] = useState<'table' | 'chart'>('table');
+  // Bottleneck view toggle (Table vs Chart vs Matrix)
+  const [bottleneckView, setBottleneckView] = useState<'table' | 'chart' | 'matrix'>('table');
+
+  // Case Duration Distribution cohorts
+  const durationCohorts = useMemo(() => {
+    const buckets = [
+      { label: '< 30 min', min: 0, max: 30, count: 0, color: 'bg-emerald-500' },
+      { label: '30 – 60 min', min: 30, max: 60, count: 0, color: 'bg-teal-500' },
+      { label: '1 – 2 hours', min: 60, max: 120, count: 0, color: 'bg-sky-500' },
+      { label: '2 – 4 hours', min: 120, max: 240, count: 0, color: 'bg-amber-500' },
+      { label: '> 4 hours', min: 240, max: Infinity, count: 0, color: 'bg-rose-500' },
+    ];
+
+    filteredCases.forEach((c) => {
+      const d = c.durationMinutes;
+      for (const b of buckets) {
+        if (d >= b.min && (b.max === Infinity ? true : d < b.max)) {
+          b.count++;
+          break;
+        }
+      }
+    });
+
+    const total = filteredCases.length || 1;
+    return buckets.map((b) => ({
+      ...b,
+      percentage: Math.round((b.count / total) * 1000) / 10,
+    }));
+  }, [filteredCases]);
 
   // Sort filtered events
   const sortedEvents = useMemo(() => {
@@ -598,29 +627,40 @@ export const ProcessAnalysisPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Table vs Chart view toggle */}
-          <div className="flex items-center gap-2 bg-slate-100 p-0.5 rounded-lg text-xs">
+          {/* Table vs Chart vs Matrix view toggle */}
+          <div className="flex items-center gap-1.5 bg-slate-100 p-0.5 rounded-lg text-xs">
             <button
               onClick={() => setBottleneckView('table')}
-              className={`px-2.5 py-1 rounded font-medium flex items-center gap-1 transition-colors ${
+              className={`px-2.5 py-1 rounded font-medium flex items-center gap-1 transition-colors cursor-pointer ${
                 bottleneckView === 'table'
                   ? 'bg-white text-slate-900 shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Table className="w-3.5 h-3.5" />
-              <span>Table</span>
+              <span>Ranked Delays</span>
             </button>
             <button
               onClick={() => setBottleneckView('chart')}
-              className={`px-2.5 py-1 rounded font-medium flex items-center gap-1 transition-colors ${
+              className={`px-2.5 py-1 rounded font-medium flex items-center gap-1 transition-colors cursor-pointer ${
                 bottleneckView === 'chart'
                   ? 'bg-white text-slate-900 shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" />
-              <span>Chart</span>
+              <span>Latency Chart</span>
+            </button>
+            <button
+              onClick={() => setBottleneckView('matrix')}
+              className={`px-2.5 py-1 rounded font-medium flex items-center gap-1 transition-colors cursor-pointer ${
+                bottleneckView === 'matrix'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Network className="w-3.5 h-3.5" />
+              <span>All Transitions ({filteredTransitions.length})</span>
             </button>
           </div>
         </div>
@@ -640,6 +680,93 @@ export const ProcessAnalysisPage: React.FC = () => {
               height={260}
               onSelectBottleneck={setSelectedBottleneck}
             />
+          </div>
+        ) : bottleneckView === 'matrix' ? (
+          /* Empirical Transition Matrix Table (Option B Schema) */
+          <div className="overflow-x-auto border border-slate-200 rounded-lg">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] border-b border-slate-200">
+                <tr>
+                  <th className="py-2.5 px-3">Directly-Follows Transition</th>
+                  <th className="py-2.5 px-3 text-right">Valid Observations</th>
+                  <th className="py-2.5 px-3 text-right">Distinct Cases</th>
+                  <th className="py-2.5 px-3 text-right">Departure Share</th>
+                  <th className="py-2.5 px-3 text-right">Median Elapsed</th>
+                  <th className="py-2.5 px-3 text-right">P90 Tail</th>
+                  <th className="py-2.5 px-3 text-right">Mean Elapsed</th>
+                  <th className="py-2.5 px-3 text-right">IQR (P75-P25)</th>
+                  <th className="py-2.5 px-3 text-center">Zero-Duration Ties</th>
+                  <th className="py-2.5 px-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                {filteredTransitions.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-8 text-center text-xs text-slate-400 font-sans">
+                      No transitions match the current filter selection.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredTransitions.map((t) => {
+                    const iqr =
+                      t.p75ElapsedMinutes !== undefined && t.p25ElapsedMinutes !== undefined
+                        ? `${Math.round((t.p75ElapsedMinutes - t.p25ElapsedMinutes) * 10) / 10}m`
+                        : '—';
+                    return (
+                      <tr
+                        key={t.id}
+                        onClick={() => handleSelectTransition(t)}
+                        className="hover:bg-sky-50/40 transition-colors cursor-pointer group"
+                      >
+                        <td className="py-2.5 px-3 font-semibold font-sans text-slate-900 group-hover:text-sky-900 flex items-center gap-1.5">
+                          <Network className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                          <span>{t.from} → {t.to}</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-slate-600">
+                          {t.observationCount.toLocaleString()}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-slate-600">
+                          {t.caseCount.toLocaleString()}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-medium text-slate-700">
+                          {t.percentageOfDepartures}%
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold text-slate-900">
+                          {formatDurationMinutes(t.medianElapsedMinutes)}
+                        </td>
+                        <td
+                          className="py-2.5 px-3 text-right font-bold text-rose-700"
+                          title={`P90: ${t.p90ElapsedMinutes} minutes`}
+                        >
+                          {formatDurationMinutes(t.p90ElapsedMinutes)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-slate-600">
+                          {formatDurationMinutes(t.meanElapsedMinutes)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-slate-500">
+                          {iqr}
+                        </td>
+                        <td className="py-2.5 px-3 text-center text-slate-500 text-[10px]">
+                          {t.zeroDurationCount ?? 0} ({t.zeroDurationPercentage ?? 0}%)
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-sans">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectTransition(t);
+                            }}
+                            className="text-sky-600 hover:text-sky-800 text-[11px] font-semibold cursor-pointer"
+                          >
+                            Inspect &rarr;
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         ) : (
           /* Ranked Table */
@@ -722,6 +849,93 @@ export const ProcessAnalysisPage: React.FC = () => {
             </table>
           </div>
         )}
+      </div>
+
+      {/* Section D2: Case Duration Distribution & Length-of-Stay Quantiles */}
+      <div className="bg-white rounded-xl border border-slate-200/90 p-5 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-teal-600" />
+              Case Duration Distribution & Length of Stay
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Empirical length-of-stay distribution across filtered patient encounters ({formatNumber(filteredCases.length)} cases).
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
+            <span>Median: <strong>{filteredMetrics.medianCaseDurationMinutes}m</strong></span>
+            <span>•</span>
+            <span>Tail P90: <strong className="text-rose-700">{filteredMetrics.p90CaseDurationMinutes}m</strong></span>
+          </div>
+        </div>
+
+        {/* Quantile Ladder & Duration Bins */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* 5 Duration Bins (7 Cols) */}
+          <div className="lg:col-span-7 space-y-2.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+              Length-of-Stay Cohort Stratification
+            </span>
+            {durationCohorts.map((cohort) => (
+              <div key={cohort.label} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-slate-700">{cohort.label}</span>
+                  <span className="font-mono text-slate-500">
+                    <strong>{formatNumber(cohort.count)}</strong> cases ({cohort.percentage}%)
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div
+                    className={`h-full ${cohort.color} transition-all duration-300 rounded-full`}
+                    style={{ width: `${Math.max(cohort.percentage > 0 ? 2 : 0, cohort.percentage)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Statistical Quantiles Card (5 Cols) */}
+          <div className="lg:col-span-5 p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 flex flex-col justify-between space-y-3 text-xs">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                Continuous Linear Percentiles (NumPy / PM4Py)
+              </span>
+
+              <div className="grid grid-cols-3 gap-2 font-mono text-center text-[11px]">
+                <div className="p-2 bg-white rounded-lg border border-slate-200">
+                  <span className="text-slate-400 text-[10px] block font-sans">Min</span>
+                  <span className="font-bold text-slate-800">{filteredMetrics.minCaseDurationMinutes}m</span>
+                </div>
+                <div className="p-2 bg-sky-50 rounded-lg border border-sky-200">
+                  <span className="text-sky-600 text-[10px] block font-sans">P50 (Median)</span>
+                  <span className="font-bold text-sky-900">{filteredMetrics.medianCaseDurationMinutes}m</span>
+                </div>
+                <div className="p-2 bg-amber-50 rounded-lg border border-amber-200">
+                  <span className="text-amber-700 text-[10px] block font-sans">Mean (Avg)</span>
+                  <span className="font-bold text-amber-950">{filteredMetrics.meanCaseDurationMinutes}m</span>
+                </div>
+                <div className="p-2 bg-white rounded-lg border border-slate-200">
+                  <span className="text-slate-400 text-[10px] block font-sans">Max</span>
+                  <span className="font-bold text-slate-800">{filteredMetrics.maxCaseDurationMinutes}m</span>
+                </div>
+                <div className="p-2 bg-rose-50 rounded-lg border border-rose-200">
+                  <span className="text-rose-700 text-[10px] block font-sans">P90 Tail</span>
+                  <span className="font-bold text-rose-950">{filteredMetrics.p90CaseDurationMinutes}m</span>
+                </div>
+                <div className="p-2 bg-white rounded-lg border border-slate-200">
+                  <span className="text-slate-400 text-[10px] block font-sans">Zero Ties</span>
+                  <span className="font-bold text-slate-800">{filteredMetrics.zeroDurationCasesCount}</span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-slate-400 leading-tight">
+              Computed strictly from chronological event logs using linear quantile interpolation without asymptotic assumptions.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Section E: Event Log Explorer */}
