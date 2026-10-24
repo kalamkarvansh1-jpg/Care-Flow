@@ -169,3 +169,15 @@ export interface CalculatedMetrics {
   averageEventsPerCase: number;
   activeFilterCount: number;
 }
+
+export interface ExecutiveReportParams {
+  datasetMetadata: DatasetMetadata;
+  metrics: CalculatedMetrics;
+  filterState: GlobalFilterState;
+  variants: ProcessVariant[];
+  bottlenecks: BottleneckItem[];
+  transitions: ActivityTransition[];
+  observations: AnalyticalObservation[];
+  casesCount: number;
+  eventsCount: number;
+}

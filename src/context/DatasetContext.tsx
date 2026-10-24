@@ -31,6 +31,7 @@ const defaultFilterState: GlobalFilterState = {
 export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [filterState, setFilterState] = useState<GlobalFilterState>(defaultFilterState);
   const [isLoadDatasetOpen, setIsLoadDatasetOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Initialize with the default Sepsis 2026 preset
@@ -227,6 +228,9 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isLoadDatasetOpen,
         openLoadDataset: () => setIsLoadDatasetOpen(true),
         closeLoadDataset: () => setIsLoadDatasetOpen(false),
+        isExportModalOpen,
+        openExportModal: () => setIsExportModalOpen(true),
+        closeExportModal: () => setIsExportModalOpen(false),
         loadPreset,
         loadCustomDataset,
       }}

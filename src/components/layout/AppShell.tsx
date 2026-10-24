@@ -8,12 +8,14 @@ import {
   X,
   Activity,
   ShieldAlert,
+  Download,
 } from 'lucide-react';
 import { useDataset } from '../../context/useDataset';
 import { LoadDatasetModal } from '../dataset/LoadDatasetModal';
+import { ExportDataModal } from '../dataset/ExportDataModal';
 
 export const AppShell: React.FC = () => {
-  const { datasetMetadata, openLoadDataset } = useDataset();
+  const { datasetMetadata, openLoadDataset, openExportModal } = useDataset();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -138,6 +140,14 @@ export const AppShell: React.FC = () => {
               <Database className="w-3.5 h-3.5 text-sky-400" />
               <span>Switch / Load Dataset</span>
             </button>
+
+            <button
+              onClick={openExportModal}
+              className="w-full py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-md text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <Download className="w-3.5 h-3.5 text-teal-400" />
+              <span>Export Data & Reports</span>
+            </button>
           </div>
         </aside>
 
@@ -164,13 +174,22 @@ export const AppShell: React.FC = () => {
             </div>
 
             {/* Top Bar Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 <span className="font-medium text-slate-700 truncate max-w-[200px]">
                   {datasetMetadata.name}
                 </span>
               </div>
+
+              <button
+                onClick={openExportModal}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md text-xs font-semibold shadow-2xs cursor-pointer transition-colors"
+                title="Export data and analytical reports"
+              >
+                <Download className="w-3.5 h-3.5 text-slate-500" />
+                <span className="hidden sm:inline">Export</span>
+              </button>
 
               <button
                 onClick={openLoadDataset}
@@ -208,6 +227,9 @@ export const AppShell: React.FC = () => {
 
       {/* Dataset Modal (No Third Page) */}
       <LoadDatasetModal />
+
+      {/* Export Data Modal */}
+      <ExportDataModal />
     </div>
   );
 };

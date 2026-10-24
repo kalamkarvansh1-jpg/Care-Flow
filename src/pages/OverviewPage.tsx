@@ -24,6 +24,7 @@ export const OverviewPage: React.FC = () => {
     filteredObservations,
     filterState,
     updateFilter,
+    openExportModal,
   } = useDataset();
 
   const navigate = useNavigate();
@@ -104,14 +105,22 @@ export const OverviewPage: React.FC = () => {
             ))}
           </div>
 
-          {/* Export Action */}
+          {/* Export Actions */}
+          <button
+            type="button"
+            onClick={openExportModal}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg font-semibold shadow-2xs transition-colors cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-white" />
+            <span>Export Pathway Data & Reports</span>
+          </button>
           <button
             type="button"
             onClick={handleExportSummary}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-semibold shadow-2xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-semibold shadow-2xs transition-colors cursor-pointer"
+            title="Quick download summary metrics CSV"
           >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span>Export Summary</span>
+            <span>Quick Summary CSV</span>
           </button>
         </div>
       </div>

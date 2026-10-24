@@ -54,6 +54,9 @@ export interface DatasetContextType {
   isLoadDatasetOpen: boolean;
   openLoadDataset: () => void;
   closeLoadDataset: () => void;
+  isExportModalOpen: boolean;
+  openExportModal: () => void;
+  closeExportModal: () => void;
 
   // Actions
   loadPreset: (presetId: string) => void;
