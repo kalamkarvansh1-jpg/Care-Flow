@@ -188,3 +188,159 @@ export interface ExecutiveReportParams {
   casesCount: number;
   eventsCount: number;
 }
+
+// ============================================================================
+// Phase 5: Conformance Checking & Clinical Compliance Tracking Types
+// ============================================================================
+
+/**
+ * Clinical pathway compliance states for patient encounters.
+ */
+export type ComplianceState = 'Compliant' | 'Delayed / SLA Risk' | 'Protocol Deviation';
+
+/**
+ * Replay move classifications matching standard PM4Py alignment terminology.
+ * - Synchronous: Observed log event matches an enabled model transition (Cost 0).
+ * - Log-Only: Observed log event cannot be accepted by the model (Cost 10,000).
+ * - Model-Only: Model required an activity that was omitted in the log (Cost 10,000).
+ * - Silent / Tau: Internal unobservable routing transition in the Petri net (Cost 1).
+ */
+export type AlignmentMoveClassification = 'Synchronous' | 'Log-Only' | 'Model-Only' | 'Silent / Tau';
+
+/**
+ * Scope granularity for deviation reports.
+ */
+export type DeviationScope = 'Category Summary' | 'Activity Breakdown';
+
+/**
+ * Sample size category tiers established in Phase 3 discovery.
+ */
+export type ModelSampleSizeTier =
+  | 'Standard (>= 100 cases)'
+  | 'Exploratory (30-99 cases)'
+  | 'Insufficient (< 30 cases)';
+
+/**
+ * Discovery modeling status for clinical pathway categories.
+ */
+export type ModelStatus =
+  | 'Discovered (Standard)'
+  | 'Discovered (Exploratory)'
+  | 'Skipped (< 30 cases)';
+
+/**
+ * Canonical conformance alignment quality metrics per clinical workflow category.
+ * Sourced directly from data/processed/pathway_alignment_quality.csv.
+ */
+export interface PathwayAlignmentQuality {
+  workflowCategory: string;
+  modelSlug: string | null;
+  evaluationType: string;
+  totalHoldoutCases: number;
+  totalHoldoutEvents: number;
+  evaluatedCases: number;
+  evaluatedEvents: number;
+  samplingPercentage: number;
+  alignmentLogFitness: number | null;
+  alignmentLogFitnessExact?: number | null;
+  averageTraceFitness: number | null;
+  averageTraceFitnessExact?: number | null;
+  percFittingTraces: number | null;
+  percFittingTracesExact?: number | null;
+  meanRawAlignmentCost: number | null;
+  medianRawAlignmentCost: number | null;
+  minRawAlignmentCost: number | null;
+  maxRawAlignmentCost: number | null;
+  deviantCasesCount: number | null;
+  deviantCasesPct: number | null;
+  failedEvaluationsCount: number;
+}
+
+/**
+ * Conformance move alignment and deviation breakdown per activity.
+ * Sourced directly from data/processed/pathway_alignment_deviations.csv.
+ */
+export interface PathwayAlignmentDeviation {
+  workflowCategory: string;
+  modelSlug: string | null;
+  scope: DeviationScope;
+  activityLabel: string;
+  syncMoves: number;
+  logOnlyMoves: number;
+  modelOnlyMoves: number;
+  silentTauMoves: number;
+  totalMoves: number;
+  logOnlyRatePct: number | null;
+  modelOnlyRatePct: number | null;
+}
+
+/**
+ * Petri net structural topology and Inductive Miner quality metrics.
+ * Sourced from data/processed/pathway_model_structure.csv, pathway_model_quality.csv,
+ * and reports/models/pathway_models/*_summary.json.
+ */
+export interface ModelStructureQuality {
+  workflowCategory: string;
+  modelSlug: string | null;
+  sampleSizeTier: ModelSampleSizeTier | string;
+  discoveryCases: number;
+  discoveryEvents: number;
+  holdoutCases: number;
+  holdoutEvents: number;
+  modelStatus: ModelStatus | string;
+  places: number | null;
+  transitionsTotal: number | null;
+  transitionsVisible: number | null;
+  transitionsSilent: number | null;
+  arcs: number | null;
+  isWorkflowNet: boolean | null;
+  formalSoundnessVerification: string;
+  constructionSoundnessExpectation: string;
+  logFitness: number | null;
+  averageTraceFitness: number | null;
+  percentageFitTraces: number | null;
+  precision: number | null;
+  precisionEvaluationMethod: string | null;
+  generalization: number | null;
+  simplicity: number | null;
+  exactVariantCoveragePct: number | null;
+  pnmlArtifact: string | null;
+  diagramArtifact: string | null;
+}
+
+/**
+ * Individual patient case-level compliance classification and alignment diagnostic.
+ */
+export interface CaseComplianceClassification {
+  caseId: string;
+  status: ComplianceState;
+  workflowCategory?: string;
+  traceFitness: number;
+  durationMinutes: number;
+  slaThresholdMinutes?: number;
+  isSlaBreached: boolean;
+  hasStructuralDeviation: boolean;
+  syncMovesCount: number;
+  logOnlyMovesCount: number;
+  modelOnlyMovesCount: number;
+  deviationsSummary: string[];
+  activitySequence: string[];
+}
+
+/**
+ * Aggregate summary metrics across an active cohort for clinical compliance tracking.
+ */
+export interface ComplianceSummaryMetrics {
+  totalCasesEvaluated: number;
+  compliantCasesCount: number;
+  compliantPercentage: number;
+  delayedCasesCount: number;
+  delayedPercentage: number;
+  deviationCasesCount: number;
+  deviationPercentage: number;
+  averageTraceFitness: number;
+  totalSyncMoves: number;
+  totalLogOnlyMoves: number;
+  totalModelOnlyMoves: number;
+  totalSilentMoves: number;
+}
