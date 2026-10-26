@@ -1310,3 +1310,6 @@ export function triggerBrowserDownload(content: string, filename: string, mimeTy
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+// Re-export Phase 5 Conformance & Compliance Evaluation Engine
+export * from './conformanceEngine';
