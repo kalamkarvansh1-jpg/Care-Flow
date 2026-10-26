@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Filter,
   ShieldAlert,
+  ShieldCheck,
   Layers,
   Clock,
   Users,
@@ -21,6 +22,7 @@ import {
   exportBottlenecksToCSV,
   exportVariantsToCSV,
   exportCasesToCSV,
+  exportCaseComplianceToCSV,
   generateExecutiveReportMarkdown,
   exportCohortReportJSON,
   generateExportFilename,
@@ -40,11 +42,12 @@ export const ExportDataModal: React.FC = () => {
     filteredBottlenecks,
     filteredObservations,
     filteredMetrics,
+    cohortCompliance,
     filterState,
   } = useDataset();
 
   const [activeCategory, setActiveCategory] = useState<
-    'events' | 'transitions' | 'bottlenecks' | 'variants' | 'cases' | 'report'
+    'events' | 'transitions' | 'bottlenecks' | 'variants' | 'cases' | 'compliance' | 'report'
   >('events');
   const [reportFormat, setReportFormat] = useState<'md' | 'json'>('md');
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
@@ -73,7 +76,16 @@ export const ExportDataModal: React.FC = () => {
 
   const datasetName = datasetMetadata.name || 'careflow';
 
-  const handleDownload = (category: 'events' | 'transitions' | 'bottlenecks' | 'variants' | 'cases' | 'report') => {
+  const handleDownload = (
+    category:
+      | 'events'
+      | 'transitions'
+      | 'bottlenecks'
+      | 'variants'
+      | 'cases'
+      | 'compliance'
+      | 'report'
+  ) => {
     setIsExporting(true);
     try {
       let content = '';
@@ -99,6 +111,10 @@ export const ExportDataModal: React.FC = () => {
       } else if (category === 'cases') {
         content = exportCasesToCSV(filteredCases);
         filename = generateExportFilename(datasetName, 'cases', 'csv');
+        mimeType = 'text/csv';
+      } else if (category === 'compliance') {
+        content = exportCaseComplianceToCSV(cohortCompliance.classifications);
+        filename = generateExportFilename(datasetName, 'compliance', 'csv');
         mimeType = 'text/csv';
       } else if (category === 'report') {
         const reportParams = {
@@ -183,6 +199,16 @@ export const ExportDataModal: React.FC = () => {
       desc: 'Encounter summary log containing admission/start time, disposition time, total elapsed duration, event count, variant classification, and clinic.',
       recordCount: filteredCases.length,
       unit: 'cases',
+    },
+    {
+      id: 'compliance' as const,
+      title: 'Conformance & SLA Audit',
+      badge: `${formatNumber(cohortCompliance.summary.totalCasesEvaluated)} evaluated`,
+      icon: ShieldCheck,
+      ext: 'CSV',
+      desc: 'Case-level conformance classifications, empirical P90 SLA benchmarks, trace fitness scores, alignment moves (Sync, Log, Model), and deviation reasons.',
+      recordCount: cohortCompliance.classifications.length,
+      unit: 'evaluations',
     },
     {
       id: 'report' as const,

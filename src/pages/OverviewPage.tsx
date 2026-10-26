@@ -18,7 +18,9 @@ import { useDataset } from '../context/useDataset';
 import { MetricCard } from '../components/common/MetricCard';
 import { TimeSeriesChart } from '../components/charts/TimeSeriesChart';
 import { HorizontalBarChart } from '../components/charts/HorizontalBarChart';
+import { ComplianceDoughnut } from '../components/charts/ComplianceDoughnut';
 import { formatDurationMinutes, formatNumber } from '../lib/formatters';
+import { DEFAULT_PATHWAY_SLA_THRESHOLDS_MINUTES } from '../lib/dataProcessing';
 import { useNavigate } from 'react-router-dom';
 
 export const OverviewPage: React.FC = () => {
@@ -31,6 +33,8 @@ export const OverviewPage: React.FC = () => {
     filteredVariants,
     filteredBottlenecks,
     filteredObservations,
+    cohortCompliance,
+    categoryCompliance,
     filterState,
     updateFilter,
     openExportModal,
@@ -280,7 +284,197 @@ export const OverviewPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Section C: Charts Grid */}
+      {/* Section C: Clinical Pathway Compliance & SLA Governance Overview */}
+      <div className="bg-white rounded-xl border border-slate-200/90 p-5 shadow-2xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-teal-600" />
+                Clinical Pathway Compliance & SLA Governance
+              </h3>
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
+                Phase 3 Conformance Engine
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Empirical pathway conformance, alignment move classification, and analytical P90 latency threshold tracking.
+            </p>
+          </div>
+
+          <button
+            onClick={() => navigate('/process-analysis#compliance')}
+            className="text-xs font-semibold text-sky-600 hover:text-sky-800 flex items-center gap-1 cursor-pointer self-start sm:self-auto hover:underline"
+          >
+            Inspect case-level compliance in Process Analysis <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Doughnut Chart & Top Metrics Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+          {/* Doughnut Chart (4 Cols) */}
+          <div className="lg:col-span-4 flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50/60 border border-slate-200/70">
+            <h4 className="text-xs font-bold text-slate-700 mb-1">
+              Active Cohort Compliance Breakdown
+            </h4>
+            <ComplianceDoughnut
+              compliantPct={cohortCompliance.summary.compliantPercentage}
+              delayedPct={cohortCompliance.summary.delayedPercentage}
+              deviationPct={cohortCompliance.summary.deviationPercentage}
+              height={210}
+            />
+          </div>
+
+          {/* Metric Cards & Replay Alignment Summary (8 Cols) */}
+          <div className="lg:col-span-8 space-y-3.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200/80">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                  Evaluated Cases
+                </span>
+                <span className="text-xl font-bold text-slate-900 font-mono">
+                  {formatNumber(cohortCompliance.summary.totalCasesEvaluated)}
+                </span>
+                <p className="text-[10px] text-slate-500 mt-0.5">100% active cohort</p>
+              </div>
+
+              <div className="p-3 rounded-lg bg-teal-50/60 border border-teal-200/80">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 block mb-0.5 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-teal-600" /> Compliant
+                </span>
+                <span className="text-xl font-bold text-teal-800 font-mono">
+                  {cohortCompliance.summary.compliantPercentage}%
+                </span>
+                <p className="text-[10px] text-teal-700 mt-0.5 font-medium">
+                  {formatNumber(cohortCompliance.summary.compliantCasesCount)} cases adhere
+                </p>
+              </div>
+
+              <div className="p-3 rounded-lg bg-amber-50/60 border border-amber-200/80">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 block mb-0.5 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-amber-600" /> Delayed Risk
+                </span>
+                <span className="text-xl font-bold text-amber-900 font-mono">
+                  {cohortCompliance.summary.delayedPercentage}%
+                </span>
+                <p className="text-[10px] text-amber-700 mt-0.5 font-medium">
+                  {formatNumber(cohortCompliance.summary.delayedCasesCount)} exceed P90 SLA
+                </p>
+              </div>
+
+              <div className="p-3 rounded-lg bg-rose-50/60 border border-rose-200/80">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-800 block mb-0.5 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 text-rose-600" /> Protocol Deviation
+                </span>
+                <span className="text-xl font-bold text-rose-900 font-mono">
+                  {cohortCompliance.summary.deviationPercentage}%
+                </span>
+                <p className="text-[10px] text-rose-700 mt-0.5 font-medium">
+                  {formatNumber(cohortCompliance.summary.deviationCasesCount)} structural breaches
+                </p>
+              </div>
+            </div>
+
+            {/* Alignment Move Breakdown Strip */}
+            <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-sky-600 shrink-0" />
+                <div>
+                  <span className="font-bold text-slate-800">
+                    Average Trace Fitness: {cohortCompliance.summary.averageTraceFitness.toFixed(3)}
+                  </span>
+                  <span className="text-[11px] text-slate-500 block">
+                    PM4Py alignment replay moves across evaluated cases
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
+                <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold" title="Synchronous moves (Cost 0)">
+                  {formatNumber(cohortCompliance.summary.totalSyncMoves)} Sync
+                </span>
+                <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-semibold" title="Log-only moves (Cost 10,000)">
+                  {formatNumber(cohortCompliance.summary.totalLogOnlyMoves)} Log-Only
+                </span>
+                <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-semibold" title="Model-only moves (Cost 10,000)">
+                  {formatNumber(cohortCompliance.summary.totalModelOnlyMoves)} Model-Only
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-semibold" title="Silent Tau moves (Cost 1)">
+                  ~{formatNumber(cohortCompliance.summary.totalSilentMoves)} Silent
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stratification by Clinical Pathway Category */}
+        <div className="space-y-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+              Conformance Stratification by Discovered Clinical Pathway Category
+            </h4>
+            <span className="text-[11px] text-slate-400">
+              {Object.keys(categoryCompliance).length} Discovered Categories
+            </span>
+          </div>
+
+          <div className="overflow-x-auto border border-slate-200 rounded-lg">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                  <th className="py-2 px-3">Clinical Pathway Category</th>
+                  <th className="py-2 px-3 text-right">Cases</th>
+                  <th className="py-2 px-3 text-right">Compliance %</th>
+                  <th className="py-2 px-3 text-right">Delayed</th>
+                  <th className="py-2 px-3 text-right">Deviations</th>
+                  <th className="py-2 px-3 text-right">Avg Fitness</th>
+                  <th className="py-2 px-3 text-right">P90 Benchmark SLA</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {Object.entries(categoryCompliance).map(([cat, m]) => {
+                  const sla = DEFAULT_PATHWAY_SLA_THRESHOLDS_MINUTES[cat];
+                  return (
+                    <tr key={cat} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-2 px-3 font-semibold text-slate-800">
+                        {cat}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono text-slate-600">
+                        {formatNumber(m.totalCasesEvaluated)}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono font-bold text-teal-700">
+                        {m.compliantPercentage}%
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono text-amber-800">
+                        {m.delayedCasesCount}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono text-rose-700">
+                        {m.deviationCasesCount}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono text-slate-700">
+                        {m.averageTraceFitness.toFixed(3)}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono text-slate-500">
+                        {sla ? `${sla.toFixed(1)} min` : 'N/A'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Clinical Governance Disclaimer */}
+        <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-500 flex items-start gap-2">
+          <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+          <p className="leading-relaxed">
+            <strong className="text-slate-700">Analytical Governance Notice:</strong> All operational latency thresholds in this dashboard represent empirical 90th-percentile (P90) values calibrated from simulation logs for tail delay tracking. They serve strictly as configurable analytical operational benchmarks, NOT validated medical clinical guidelines or regulatory healthcare SLAs. Conformance evaluation represents client-side heuristic milestone and sequence checks based on Phase 3 discovery models.
+          </p>
+        </div>
+      </div>
+
+      {/* Section D: Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Process Activity Over Time (2 Cols) */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200/90 p-5 shadow-2xs">

@@ -12,6 +12,7 @@ import {
   DatasetValidationReport,
   CalculatedMetrics,
   ExecutiveReportParams,
+  CaseComplianceClassification,
 } from '../types';
 
 export function calculateMedian(numbers: number[]): number {
@@ -1277,9 +1278,59 @@ export function exportCohortReportJSON(params: ExecutiveReportParams): string {
 /**
  * Generate a standardized, safe filename for an export download.
  */
+/**
+ * Option F: Export patient case-level compliance and conformance diagnostics to CSV.
+ */
+export function exportCaseComplianceToCSV(
+  classifications: CaseComplianceClassification[]
+): string {
+  const headers = [
+    'Case ID',
+    'Clinical Pathway',
+    'Compliance Status',
+    'Duration (min)',
+    'SLA Threshold (min)',
+    'SLA Breached',
+    'Structural Deviation',
+    'Trace Fitness',
+    'Sync Moves',
+    'Log-Only Moves',
+    'Model-Only Moves',
+    'Activity Sequence',
+    'Deviation Summary',
+  ];
+
+  const rows = classifications.map((item) => {
+    return [
+      escapeCsvCell(item.caseId),
+      escapeCsvCell(item.workflowCategory || 'Unspecified'),
+      escapeCsvCell(item.status),
+      item.durationMinutes,
+      item.slaThresholdMinutes ?? 'N/A',
+      item.isSlaBreached,
+      item.hasStructuralDeviation,
+      item.traceFitness,
+      item.syncMovesCount,
+      item.logOnlyMovesCount,
+      item.modelOnlyMovesCount,
+      escapeCsvCell(item.activitySequence.join(' → ')),
+      escapeCsvCell(item.deviationsSummary.join('; ') || 'None (Compliant)'),
+    ];
+  });
+
+  return [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+}
+
 export function generateExportFilename(
   datasetName: string,
-  exportType: 'events' | 'transitions' | 'bottlenecks' | 'variants' | 'cases' | 'audit_report',
+  exportType:
+    | 'events'
+    | 'transitions'
+    | 'bottlenecks'
+    | 'variants'
+    | 'cases'
+    | 'audit_report'
+    | 'compliance',
   extension: 'csv' | 'md' | 'json'
 ): string {
   const safeDataset = (datasetName || 'dataset')

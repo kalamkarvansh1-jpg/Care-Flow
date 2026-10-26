@@ -15,6 +15,8 @@ import {
   generateDataObservations,
   applyGlobalFilters,
   computeSummaryMetrics,
+  evaluateCohortCompliance,
+  evaluateComplianceByCategory,
 } from '../lib/dataProcessing';
 import { DATASET_PRESETS } from '../data/demoData';
 import { DatasetContext } from './DatasetContextInstance';
@@ -145,6 +147,15 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return computeSummaryMetrics(filteredCases, filteredEvents, activeFilterCount);
   }, [filteredCases, filteredEvents, activeFilterCount]);
 
+  // Phase 5 Conformance & Compliance Evaluation
+  const cohortCompliance = useMemo(() => {
+    return evaluateCohortCompliance(filteredCases);
+  }, [filteredCases]);
+
+  const categoryCompliance = useMemo(() => {
+    return evaluateComplianceByCategory(filteredCases);
+  }, [filteredCases]);
+
   const updateFilter = (partial: Partial<GlobalFilterState>) => {
     setFilterState((prev) => ({ ...prev, ...partial }));
   };
@@ -221,6 +232,8 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
         filteredObservations,
         filteredMetrics,
         timeSeriesData,
+        cohortCompliance,
+        categoryCompliance,
         filterState,
         setFilterState,
         updateFilter,

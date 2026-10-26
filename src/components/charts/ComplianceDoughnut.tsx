@@ -16,19 +16,25 @@ export const ComplianceDoughnut: React.FC<ComplianceDoughnutProps> = ({
   deviationPct = 6.2,
   height = 200,
 }) => {
+  const isZero = compliantPct === 0 && delayedPct === 0 && deviationPct === 0;
+
   const data: ChartData<'doughnut'> = {
-    labels: ['Pathway Compliant', 'Delayed / SLA Risk', 'Protocol Deviation'],
+    labels: isZero
+      ? ['No Active Cases']
+      : ['Pathway Compliant', 'Delayed / SLA Risk', 'Protocol Deviation'],
     datasets: [
       {
-        data: [compliantPct, delayedPct, deviationPct],
-        backgroundColor: [
-          '#0d9488', // Teal 600
-          '#f59e0b', // Amber 500
-          '#e11d48', // Rose 600
-        ],
+        data: isZero ? [100] : [compliantPct, delayedPct, deviationPct],
+        backgroundColor: isZero
+          ? ['#e2e8f0']
+          : [
+              '#0d9488', // Teal 600
+              '#f59e0b', // Amber 500
+              '#e11d48', // Rose 600
+            ],
         borderWidth: 2,
         borderColor: '#ffffff',
-        hoverOffset: 4,
+        hoverOffset: isZero ? 0 : 4,
       },
     ],
   };
@@ -52,6 +58,7 @@ export const ComplianceDoughnut: React.FC<ComplianceDoughnutProps> = ({
       tooltip: {
         callbacks: {
           label: (context) => {
+            if (isZero) return ' No cases evaluated in active filter';
             const label = context.label || '';
             const val = context.parsed;
             return ` ${label}: ${val}%`;
@@ -65,7 +72,9 @@ export const ComplianceDoughnut: React.FC<ComplianceDoughnutProps> = ({
     <div className="relative flex items-center justify-center" style={{ height }}>
       <Doughnut data={data} options={options} />
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-6">
-        <span className="text-2xl font-bold text-slate-900 tracking-tight">{compliantPct}%</span>
+        <span className="text-2xl font-bold text-slate-900 tracking-tight">
+          {compliantPct}%
+        </span>
         <span className="text-xs text-slate-500 font-medium">Compliance</span>
       </div>
     </div>

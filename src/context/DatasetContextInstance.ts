@@ -12,6 +12,8 @@ import {
   GlobalFilterState,
   RawEventRow,
   ColumnMapping,
+  CaseComplianceClassification,
+  ComplianceSummaryMetrics,
 } from '../types';
 
 export interface DatasetContextType {
@@ -43,6 +45,13 @@ export interface DatasetContextType {
     caseCompletions: number[];
     medianDurationsHours: number[];
   };
+
+  // Phase 5 Conformance & Compliance Evaluation
+  cohortCompliance: {
+    classifications: CaseComplianceClassification[];
+    summary: ComplianceSummaryMetrics;
+  };
+  categoryCompliance: Record<string, ComplianceSummaryMetrics>;
 
   // Global Filter State & Controls
   filterState: GlobalFilterState;

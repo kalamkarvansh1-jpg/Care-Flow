@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   Download,
@@ -23,6 +23,7 @@ import { CaseDetailDrawer } from '../components/tables/CaseDetailDrawer';
 import { BottleneckDetailDrawer } from '../components/tables/BottleneckDetailDrawer';
 import { BottleneckChart } from '../components/charts/BottleneckChart';
 import { ProcessFlowGraph } from '../components/charts/ProcessFlowGraph';
+import { CaseComplianceTable } from '../components/tables/CaseComplianceTable';
 import {
   formatDurationMinutes,
   formatDateTime,
@@ -45,6 +46,7 @@ export const ProcessAnalysisPage: React.FC = () => {
     filteredTransitions,
     filteredBottlenecks,
     filteredMetrics,
+    cohortCompliance,
     filterState,
     updateFilter,
     resetFilters,
@@ -54,6 +56,16 @@ export const ProcessAnalysisPage: React.FC = () => {
   // Drawer state
   const [selectedCaseSummary, setSelectedCaseSummary] = useState<CaseSummary | null>(null);
   const [selectedBottleneck, setSelectedBottleneck] = useState<BottleneckItem | null>(null);
+
+  // Smooth scroll to compliance section if navigated with hash
+  useEffect(() => {
+    if (window.location.hash === '#compliance') {
+      const el = document.getElementById('compliance');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, []);
 
   // Table pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -938,7 +950,18 @@ export const ProcessAnalysisPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Section E: Event Log Explorer */}
+      {/* Section E: Clinical Pathway Conformance & Case Compliance Diagnostics */}
+      <div id="compliance">
+        <CaseComplianceTable
+          cases={filteredCases}
+          classifications={cohortCompliance.classifications}
+          summary={cohortCompliance.summary}
+          onSelectCase={(caseSummary) => setSelectedCaseSummary(caseSummary)}
+          datasetName={datasetMetadata.name}
+        />
+      </div>
+
+      {/* Section F: Event Log Explorer */}
       <div className="bg-white rounded-xl border border-slate-200/90 p-5 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
           <div>

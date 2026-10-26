@@ -1,8 +1,19 @@
-import React, { useEffect } from 'react';
-import { X, Clock, AlertTriangle, Calendar, User, Building } from 'lucide-react';
+import React, { useEffect, useMemo } from 'react';
+import {
+  X,
+  Clock,
+  AlertTriangle,
+  Calendar,
+  User,
+  Building,
+  CheckCircle2,
+  ShieldCheck,
+  Info,
+} from 'lucide-react';
 import { CaseSummary } from '../../types';
 import { formatDurationMinutes, formatDateTime } from '../../lib/formatters';
 import { useDataset } from '../../context/useDataset';
+import { evaluateCaseCompliance } from '../../lib/dataProcessing';
 
 interface CaseDetailDrawerProps {
   caseSummary: CaseSummary | null;
@@ -11,6 +22,10 @@ interface CaseDetailDrawerProps {
 
 export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseSummary, onClose }) => {
   const { datasetMetadata } = useDataset();
+
+  const compliance = useMemo(() => {
+    return caseSummary ? evaluateCaseCompliance(caseSummary) : null;
+  }, [caseSummary]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -44,6 +59,28 @@ export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseSummary,
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
                   {caseSummary.eventCount} Events
                 </span>
+                {compliance && (
+                  <span
+                    className={`text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                      compliance.status === 'Compliant'
+                        ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                        : compliance.status === 'Delayed / SLA Risk'
+                        ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                    }`}
+                  >
+                    {compliance.status === 'Compliant' && (
+                      <CheckCircle2 className="w-3 h-3 text-teal-600" />
+                    )}
+                    {compliance.status === 'Delayed / SLA Risk' && (
+                      <Clock className="w-3 h-3 text-amber-600" />
+                    )}
+                    {compliance.status === 'Protocol Deviation' && (
+                      <AlertTriangle className="w-3 h-3 text-rose-600" />
+                    )}
+                    {compliance.status}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 Observed patient pathway journey and event timestamps
@@ -84,6 +121,83 @@ export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseSummary,
               </p>
             </div>
           </div>
+
+          {/* Conformance & Compliance Diagnostic Panel */}
+          {compliance && (
+            <div className="p-4 border-b border-slate-200 bg-slate-50/50 space-y-2.5 text-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-teal-600" />
+                  Clinical Pathway Conformance & SLA Diagnostic
+                </span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700 truncate">
+                  Model: {compliance.workflowCategory || 'Unspecified'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-[11px]">
+                <div className="p-2 rounded bg-white border border-slate-200/80">
+                  <span className="text-[10px] text-slate-400 block font-semibold">TRACE FITNESS</span>
+                  <span className="font-bold text-slate-900 font-mono text-xs">
+                    {compliance.traceFitness.toFixed(3)}
+                  </span>
+                  <span className="text-[10px] text-slate-500 block truncate">
+                    {compliance.syncMovesCount}S | {compliance.logOnlyMovesCount}L | {compliance.modelOnlyMovesCount}M
+                  </span>
+                </div>
+
+                <div className="p-2 rounded bg-white border border-slate-200/80">
+                  <span className="text-[10px] text-slate-400 block font-semibold">P90 SLA BENCHMARK</span>
+                  <span className="font-bold text-slate-900 font-mono text-xs">
+                    {compliance.slaThresholdMinutes ? `${compliance.slaThresholdMinutes.toFixed(1)}m` : 'N/A'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 block truncate">
+                    Empirical P90 threshold
+                  </span>
+                </div>
+
+                <div className="p-2 rounded bg-white border border-slate-200/80">
+                  <span className="text-[10px] text-slate-400 block font-semibold">DELAY STATUS</span>
+                  <span
+                    className={`font-bold font-mono text-xs ${
+                      compliance.isSlaBreached ? 'text-rose-700' : 'text-teal-700'
+                    }`}
+                  >
+                    {compliance.isSlaBreached ? 'SLA Breached' : 'Within Threshold'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 block truncate">
+                    {compliance.isSlaBreached
+                      ? `+${(caseSummary.durationMinutes - (compliance.slaThresholdMinutes ?? 0)).toFixed(1)}m over`
+                      : 'Operational nominal'}
+                  </span>
+                </div>
+              </div>
+
+              {compliance.deviationsSummary.length > 0 ? (
+                <div className="p-2.5 rounded-lg border border-amber-200/80 bg-amber-50/60 text-[11px] text-amber-900 space-y-1">
+                  <span className="font-bold flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    Diagnostic Findings ({compliance.deviationsSummary.length}):
+                  </span>
+                  <ul className="list-disc list-inside space-y-0.5 text-amber-800">
+                    {compliance.deviationsSummary.map((dev, idx) => (
+                      <li key={idx}>{dev}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div className="p-2 rounded bg-teal-50/50 border border-teal-200/60 text-[11px] text-teal-800 flex items-center gap-1.5 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                  Case adheres to modeled activity sequencing and analytical latency benchmark.
+                </div>
+              )}
+
+              <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                <Info className="w-3 h-3 text-slate-400 shrink-0" />
+                <span>Empirical P90 benchmark is a configurable analytical threshold, not a validated clinical SLA.</span>
+              </div>
+            </div>
+          )}
 
           {/* Time Span Bar */}
           <div className="px-5 py-2.5 bg-slate-100/60 border-b border-slate-200 text-[11px] text-slate-600 flex items-center justify-between">
