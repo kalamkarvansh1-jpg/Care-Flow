@@ -321,13 +321,14 @@ export const OverviewPage: React.FC = () => {
               compliantPct={cohortCompliance.summary.compliantPercentage}
               delayedPct={cohortCompliance.summary.delayedPercentage}
               deviationPct={cohortCompliance.summary.deviationPercentage}
+              unconfiguredPct={cohortCompliance.summary.unconfiguredPercentage}
               height={210}
             />
           </div>
 
           {/* Metric Cards & Replay Alignment Summary (8 Cols) */}
           <div className="lg:col-span-8 space-y-3.5">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className={`grid grid-cols-2 ${cohortCompliance.summary.unconfiguredCasesCount > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3`}>
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200/80">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
                   Evaluated Cases
@@ -373,7 +374,44 @@ export const OverviewPage: React.FC = () => {
                   {formatNumber(cohortCompliance.summary.deviationCasesCount)} structural breaches
                 </p>
               </div>
+
+              {cohortCompliance.summary.unconfiguredCasesCount > 0 && (
+                <div className="p-3 rounded-lg bg-slate-100/80 border border-slate-300">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 block mb-0.5 flex items-center gap-1">
+                    <Info className="w-3 h-3 text-slate-500" /> Unconfigured
+                  </span>
+                  <span className="text-xl font-bold text-slate-800 font-mono">
+                    {cohortCompliance.summary.unconfiguredPercentage}%
+                  </span>
+                  <p className="text-[10px] text-slate-600 mt-0.5 font-medium">
+                    {formatNumber(cohortCompliance.summary.unconfiguredCasesCount)} unmapped
+                  </p>
+                </div>
+              )}
             </div>
+
+            {/* Door-to-Antibiotic Latency Callout for Sepsis */}
+            {cohortCompliance.summary.doorToAntibioticMetrics && (
+              <div className="p-3 rounded-lg bg-sky-50/70 border border-sky-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-sky-700 shrink-0" />
+                  <div>
+                    <span className="font-bold text-sky-950">
+                      Empirical Door-to-Antibiotic Interval:{' '}
+                      <span className="font-mono text-sky-900">
+                        Median {cohortCompliance.summary.doorToAntibioticMetrics.medianMinutes}m • P90 {cohortCompliance.summary.doorToAntibioticMetrics.p90Minutes}m
+                      </span>
+                    </span>
+                    <span className="text-[10px] text-sky-700 block">
+                      Evaluated across {formatNumber(cohortCompliance.summary.doorToAntibioticMetrics.evaluatedCasesCount)} cases. Synthetic demonstration benchmark; not a clinical guideline standard.
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200 shrink-0 self-start sm:self-auto">
+                  Demonstration Benchmark
+                </span>
+              </div>
+            )}
 
             {/* Alignment Move Breakdown Strip */}
             <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
@@ -384,22 +422,26 @@ export const OverviewPage: React.FC = () => {
                     Average Trace Fitness: {cohortCompliance.summary.averageTraceFitness.toFixed(3)}
                   </span>
                   <span className="text-[11px] text-slate-500 block">
-                    PM4Py alignment replay moves across evaluated cases
+                    {cohortCompliance.summary.cohortDomain === 'outpatient'
+                      ? 'PM4Py alignment replay moves across evaluated cases'
+                      : cohortCompliance.summary.cohortDomain === 'unconfigured'
+                      ? 'No reference model configured; replay moves unavailable'
+                      : 'Deterministic heuristic clinical milestone & ordering moves'}
                   </span>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
-                <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold" title="Synchronous moves (Cost 0)">
+                <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold" title="Synchronous moves">
                   {formatNumber(cohortCompliance.summary.totalSyncMoves)} Sync
                 </span>
-                <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-semibold" title="Log-only moves (Cost 10,000)">
+                <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-semibold" title="Log-only moves">
                   {formatNumber(cohortCompliance.summary.totalLogOnlyMoves)} Log-Only
                 </span>
-                <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-semibold" title="Model-only moves (Cost 10,000)">
+                <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-semibold" title="Model-only moves">
                   {formatNumber(cohortCompliance.summary.totalModelOnlyMoves)} Model-Only
                 </span>
-                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-semibold" title="Silent Tau moves (Cost 1)">
+                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-semibold" title="Silent Tau moves (Outpatient Petri net models)">
                   ~{formatNumber(cohortCompliance.summary.totalSilentMoves)} Silent
                 </span>
               </div>

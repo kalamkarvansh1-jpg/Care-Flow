@@ -149,12 +149,12 @@ export const DatasetProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Phase 5 Conformance & Compliance Evaluation
   const cohortCompliance = useMemo(() => {
-    return evaluateCohortCompliance(filteredCases);
-  }, [filteredCases]);
+    return evaluateCohortCompliance(filteredCases, { datasetMetadata: metaInfo });
+  }, [filteredCases, metaInfo]);
 
   const categoryCompliance = useMemo(() => {
-    return evaluateComplianceByCategory(filteredCases);
-  }, [filteredCases]);
+    return evaluateComplianceByCategory(filteredCases, { datasetMetadata: metaInfo });
+  }, [filteredCases, metaInfo]);
 
   const updateFilter = (partial: Partial<GlobalFilterState>) => {
     setFilterState((prev) => ({ ...prev, ...partial }));

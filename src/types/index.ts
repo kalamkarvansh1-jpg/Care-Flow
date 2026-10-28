@@ -195,8 +195,21 @@ export interface ExecutiveReportParams {
 
 /**
  * Clinical pathway compliance states for patient encounters.
+ * - Compliant: Case conforms structurally to reference pathway and completed within empirical SLA threshold.
+ * - Delayed / SLA Risk: Case is structurally compliant but exceeded empirical P90 duration benchmark.
+ * - Protocol Deviation: Case breached clinical structure (unmodeled activity, omitted milestone, or invalid sequence).
+ * - Unconfigured Reference Model: Active dataset or category lacks a certified clinical reference model.
  */
-export type ComplianceState = 'Compliant' | 'Delayed / SLA Risk' | 'Protocol Deviation';
+export type ComplianceState =
+  | 'Compliant'
+  | 'Delayed / SLA Risk'
+  | 'Protocol Deviation'
+  | 'Unconfigured Reference Model';
+
+/**
+ * Supported clinical cohort domains for deterministic conformance validation.
+ */
+export type CohortDomain = 'outpatient' | 'ed_sepsis' | 'cardiology' | 'unconfigured';
 
 /**
  * Replay move classifications matching standard PM4Py alignment terminology.
@@ -315,16 +328,19 @@ export interface CaseComplianceClassification {
   caseId: string;
   status: ComplianceState;
   workflowCategory?: string;
+  cohortDomain?: CohortDomain;
   traceFitness: number;
   durationMinutes: number;
   slaThresholdMinutes?: number;
   isSlaBreached: boolean;
   hasStructuralDeviation: boolean;
+  isUnconfigured?: boolean;
   syncMovesCount: number;
   logOnlyMovesCount: number;
   modelOnlyMovesCount: number;
   deviationsSummary: string[];
   activitySequence: string[];
+  doorToAntibioticMinutes?: number | null;
 }
 
 /**
@@ -338,9 +354,17 @@ export interface ComplianceSummaryMetrics {
   delayedPercentage: number;
   deviationCasesCount: number;
   deviationPercentage: number;
+  unconfiguredCasesCount: number;
+  unconfiguredPercentage: number;
   averageTraceFitness: number;
   totalSyncMoves: number;
   totalLogOnlyMoves: number;
   totalModelOnlyMoves: number;
   totalSilentMoves: number;
+  cohortDomain?: CohortDomain;
+  doorToAntibioticMetrics?: {
+    medianMinutes: number;
+    p90Minutes: number;
+    evaluatedCasesCount: number;
+  } | null;
 }

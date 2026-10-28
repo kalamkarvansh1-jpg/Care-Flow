@@ -66,7 +66,9 @@ export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseSummary,
                         ? 'bg-teal-50 text-teal-700 border border-teal-200'
                         : compliance.status === 'Delayed / SLA Risk'
                         ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                        : compliance.status === 'Protocol Deviation'
+                        ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                        : 'bg-slate-100 text-slate-700 border border-slate-300'
                     }`}
                   >
                     {compliance.status === 'Compliant' && (
@@ -77,6 +79,9 @@ export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseSummary,
                     )}
                     {compliance.status === 'Protocol Deviation' && (
                       <AlertTriangle className="w-3 h-3 text-rose-600" />
+                    )}
+                    {compliance.status === 'Unconfigured Reference Model' && (
+                      <Info className="w-3 h-3 text-slate-500" />
                     )}
                     {compliance.status}
                   </span>
@@ -139,10 +144,12 @@ export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseSummary,
                 <div className="p-2 rounded bg-white border border-slate-200/80">
                   <span className="text-[10px] text-slate-400 block font-semibold">TRACE FITNESS</span>
                   <span className="font-bold text-slate-900 font-mono text-xs">
-                    {compliance.traceFitness.toFixed(3)}
+                    {compliance.status === 'Unconfigured Reference Model' ? '—' : compliance.traceFitness.toFixed(3)}
                   </span>
                   <span className="text-[10px] text-slate-500 block truncate">
-                    {compliance.syncMovesCount}S | {compliance.logOnlyMovesCount}L | {compliance.modelOnlyMovesCount}M
+                    {compliance.status === 'Unconfigured Reference Model'
+                      ? 'No reference model'
+                      : `${compliance.syncMovesCount}S | ${compliance.logOnlyMovesCount}L | ${compliance.modelOnlyMovesCount}M`}
                   </span>
                 </div>
 
@@ -152,7 +159,7 @@ export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseSummary,
                     {compliance.slaThresholdMinutes ? `${compliance.slaThresholdMinutes.toFixed(1)}m` : 'N/A'}
                   </span>
                   <span className="text-[10px] text-slate-500 block truncate">
-                    Empirical P90 threshold
+                    {compliance.status === 'Unconfigured Reference Model' ? 'No SLA configured' : 'Empirical P90 threshold'}
                   </span>
                 </div>
 
@@ -160,18 +167,41 @@ export const CaseDetailDrawer: React.FC<CaseDetailDrawerProps> = ({ caseSummary,
                   <span className="text-[10px] text-slate-400 block font-semibold">DELAY STATUS</span>
                   <span
                     className={`font-bold font-mono text-xs ${
-                      compliance.isSlaBreached ? 'text-rose-700' : 'text-teal-700'
+                      compliance.status === 'Unconfigured Reference Model'
+                        ? 'text-slate-600'
+                        : compliance.isSlaBreached
+                        ? 'text-rose-700'
+                        : 'text-teal-700'
                     }`}
                   >
-                    {compliance.isSlaBreached ? 'SLA Breached' : 'Within Threshold'}
+                    {compliance.status === 'Unconfigured Reference Model'
+                      ? 'Unconfigured'
+                      : compliance.isSlaBreached
+                      ? 'SLA Breached'
+                      : 'Within Threshold'}
                   </span>
                   <span className="text-[10px] text-slate-500 block truncate">
-                    {compliance.isSlaBreached
+                    {compliance.status === 'Unconfigured Reference Model'
+                      ? 'Model unmapped'
+                      : compliance.isSlaBreached
                       ? `+${(caseSummary.durationMinutes - (compliance.slaThresholdMinutes ?? 0)).toFixed(1)}m over`
                       : 'Operational nominal'}
                   </span>
                 </div>
               </div>
+
+              {/* Door-to-Antibiotic Interval for Sepsis */}
+              {compliance.doorToAntibioticMinutes !== undefined && compliance.doorToAntibioticMinutes !== null && (
+                <div className="p-2 rounded-lg bg-sky-50/80 border border-sky-200 text-[11px] text-sky-900 flex items-center justify-between">
+                  <span className="font-medium flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                    Door-to-Antibiotic Resuscitation Interval:
+                  </span>
+                  <span className="font-mono font-bold text-sky-800">
+                    {compliance.doorToAntibioticMinutes.toFixed(1)} min
+                  </span>
+                </div>
+              )}
 
               {compliance.deviationsSummary.length > 0 ? (
                 <div className="p-2.5 rounded-lg border border-amber-200/80 bg-amber-50/60 text-[11px] text-amber-900 space-y-1">

@@ -7,6 +7,7 @@ interface ComplianceDoughnutProps {
   compliantPct: number;
   delayedPct: number;
   deviationPct: number;
+  unconfiguredPct?: number;
   height?: number;
 }
 
@@ -14,24 +15,52 @@ export const ComplianceDoughnut: React.FC<ComplianceDoughnutProps> = ({
   compliantPct = 88.6,
   delayedPct = 5.2,
   deviationPct = 6.2,
+  unconfiguredPct = 0,
   height = 200,
 }) => {
-  const isZero = compliantPct === 0 && delayedPct === 0 && deviationPct === 0;
+  const isZero =
+    compliantPct === 0 && delayedPct === 0 && deviationPct === 0 && unconfiguredPct === 0;
+  const hasUnconfigured = unconfiguredPct > 0;
+  const isAllUnconfigured = unconfiguredPct === 100;
+
+  const labels = isZero
+    ? ['No Active Cases']
+    : hasUnconfigured
+    ? [
+        'Pathway Compliant',
+        'Delayed / SLA Risk',
+        'Protocol Deviation',
+        'Unconfigured Reference Model',
+      ]
+    : ['Pathway Compliant', 'Delayed / SLA Risk', 'Protocol Deviation'];
+
+  const datasetValues = isZero
+    ? [100]
+    : hasUnconfigured
+    ? [compliantPct, delayedPct, deviationPct, unconfiguredPct]
+    : [compliantPct, delayedPct, deviationPct];
+
+  const backgroundColors = isZero
+    ? ['#e2e8f0']
+    : hasUnconfigured
+    ? [
+        '#0d9488', // Teal 600
+        '#f59e0b', // Amber 500
+        '#e11d48', // Rose 600
+        '#94a3b8', // Slate 400
+      ]
+    : [
+        '#0d9488', // Teal 600
+        '#f59e0b', // Amber 500
+        '#e11d48', // Rose 600
+      ];
 
   const data: ChartData<'doughnut'> = {
-    labels: isZero
-      ? ['No Active Cases']
-      : ['Pathway Compliant', 'Delayed / SLA Risk', 'Protocol Deviation'],
+    labels,
     datasets: [
       {
-        data: isZero ? [100] : [compliantPct, delayedPct, deviationPct],
-        backgroundColor: isZero
-          ? ['#e2e8f0']
-          : [
-              '#0d9488', // Teal 600
-              '#f59e0b', // Amber 500
-              '#e11d48', // Rose 600
-            ],
+        data: datasetValues,
+        backgroundColor: backgroundColors,
         borderWidth: 2,
         borderColor: '#ffffff',
         hoverOffset: isZero ? 0 : 4,
@@ -73,9 +102,11 @@ export const ComplianceDoughnut: React.FC<ComplianceDoughnutProps> = ({
       <Doughnut data={data} options={options} />
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-6">
         <span className="text-2xl font-bold text-slate-900 tracking-tight">
-          {compliantPct}%
+          {isAllUnconfigured ? '—' : `${compliantPct}%`}
         </span>
-        <span className="text-xs text-slate-500 font-medium">Compliance</span>
+        <span className="text-xs text-slate-500 font-medium">
+          {isAllUnconfigured ? 'Unconfigured' : 'Compliance'}
+        </span>
       </div>
     </div>
   );
