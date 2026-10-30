@@ -1364,3 +1364,7 @@ export function triggerBrowserDownload(content: string, filename: string, mimeTy
 
 // Re-export Phase 5 Conformance & Compliance Evaluation Engine
 export * from './conformanceEngine';
+
+
+// Re-export Phase 6 Operational Bottleneck Intervention & What-If Simulation Engine
+export * from './simulationEngine';

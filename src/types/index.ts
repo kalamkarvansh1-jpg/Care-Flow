@@ -368,3 +368,7 @@ export interface ComplianceSummaryMetrics {
     evaluatedCasesCount: number;
   } | null;
 }
+
+
+// Re-export Phase 6 What-If Simulation Types
+export * from './simulation';
