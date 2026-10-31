@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   GitFork,
+  SlidersHorizontal,
   Database,
   Menu,
   X,
@@ -20,7 +21,8 @@ export const AppShell: React.FC = () => {
   const location = useLocation();
 
   const isOverview = location.pathname.includes('/overview') || location.pathname === '/';
-  const pageTitle = isOverview ? 'Overview' : 'Process Analysis';
+  const isSimulation = location.pathname.includes('/simulation');
+  const pageTitle = isOverview ? 'Overview' : isSimulation ? 'What-If Simulation' : 'Process Analysis';
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans antialiased">
@@ -115,6 +117,21 @@ export const AppShell: React.FC = () => {
             >
               <GitFork className="w-4 h-4 shrink-0" />
               <span>Process Analysis</span>
+            </NavLink>
+
+            <NavLink
+              to="/simulation"
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                  isActive
+                    ? 'bg-sky-600 text-white shadow-2xs'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                }`
+              }
+            >
+              <SlidersHorizontal className="w-4 h-4 shrink-0" />
+              <span>What-If Simulation</span>
             </NavLink>
           </nav>
 

@@ -448,3 +448,72 @@ export function runWhatIfSimulation(
     modelNotice: SIMULATION_MODEL_DISCLAIMER,
   };
 }
+
+
+/**
+ * Helper to escape CSV cell contents conforming to RFC 4180.
+ */
+function escapeCsvValue(val: unknown): string {
+  if (val === null || val === undefined) return '';
+  const str = String(val);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+/**
+ * Export simulation scenario results to a structured CSV format.
+ */
+export function exportSimulationToCSV(result: SimulationResult): string {
+  const metaRows: string[][] = [
+    ['Simulation Scenario Report', escapeCsvValue(result.scenarioName)],
+    ['Scenario ID', escapeCsvValue(result.scenarioId)],
+    ['Generated At (UTC)', new Date().toISOString()],
+    ['Total Cases Evaluated', String(result.totalCasesEvaluated)],
+    ['Affected Cases Count', String(result.affectedCasesCount)],
+    ['Affected Cases Percentage', `${result.affectedCasesPercentage}%`],
+    ['Total Hypothetical Time Saved (min)', String(result.totalHypotheticalMinutesSaved)],
+    ['Total Hypothetical Time Saved (hours)', String(result.totalHypotheticalHoursSaved)],
+    ['Baseline Median Duration (min)', String(result.medianDuration.baseline)],
+    ['Simulated Median Duration (min)', String(result.medianDuration.simulated)],
+    ['Median Delta (min)', String(result.medianDuration.absoluteDelta)],
+    ['Median Delta (%)', `${result.medianDuration.percentageDelta}%`],
+    ['Baseline P90 Duration (min)', String(result.p90Duration.baseline)],
+    ['Simulated P90 Duration (min)', String(result.p90Duration.simulated)],
+    ['P90 Delta (min)', String(result.p90Duration.absoluteDelta)],
+    ['P90 Delta (%)', `${result.p90Duration.percentageDelta}%`],
+    ['Empirical Benchmark Threshold (min)', result.empiricalThresholdMinutes !== null && result.empiricalThresholdMinutes !== undefined ? String(result.empiricalThresholdMinutes) : 'N/A'],
+    ['Cases Exceeding Threshold (Baseline)', String(result.casesExceedingThresholdBaseline)],
+    ['Cases Exceeding Threshold (Simulated)', String(result.casesExceedingThresholdSimulated)],
+    ['Modeled Recovered Encounters', String(result.recoveredCasesCount)],
+    ['Modeled Recovery Rate (%)', `${result.recoveredCasesPercentage}%`],
+    ['Model Assumption Disclaimer', escapeCsvValue(result.modelNotice)],
+    [],
+    [
+      'Case ID',
+      'Baseline Duration (min)',
+      'Simulated Duration (min)',
+      'Saved Minutes',
+      'Reduction (%)',
+      'Interventions Traversed',
+      'Baseline Exceeded Threshold',
+      'Simulated Exceeded Threshold',
+      'Threshold Recovered',
+    ],
+  ];
+
+  const caseRows: string[][] = result.caseResults.map((c) => [
+    escapeCsvValue(c.caseId),
+    String(c.baselineDurationMinutes),
+    String(c.simulatedDurationMinutes),
+    String(c.savedMinutes),
+    `${c.percentageReduction}%`,
+    String(c.traversedInterventionsCount),
+    c.isExceedingThresholdBaseline !== undefined ? String(c.isExceedingThresholdBaseline) : 'N/A',
+    c.isExceedingThresholdSimulated !== undefined ? String(c.isExceedingThresholdSimulated) : 'N/A',
+    c.isThresholdRecovered !== undefined ? String(c.isThresholdRecovered) : 'N/A',
+  ]);
+
+  return [...metaRows.map((r) => r.join(',')), ...caseRows.map((r) => r.join(','))].join('\r\n');
+}

@@ -4,6 +4,7 @@ import { DatasetProvider } from './context/DatasetContext';
 import { AppShell } from './components/layout/AppShell';
 import { OverviewPage } from './pages/OverviewPage';
 import { ProcessAnalysisPage } from './pages/ProcessAnalysisPage';
+import { SimulationPage } from './pages/SimulationPage';
 
 export function App() {
   return (
@@ -14,6 +15,7 @@ export function App() {
             <Route index element={<Navigate to="/overview" replace />} />
             <Route path="overview" element={<OverviewPage />} />
             <Route path="process-analysis" element={<ProcessAnalysisPage />} />
+            <Route path="simulation" element={<SimulationPage />} />
             <Route path="*" element={<Navigate to="/overview" replace />} />
           </Route>
         </Routes>

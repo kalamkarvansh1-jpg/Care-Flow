@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   X,
   Clock,
@@ -8,6 +9,7 @@ import {
   Activity,
   ChevronRight,
   Sparkles,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { BottleneckItem, CaseSummary } from '../../types';
 import { formatDurationMinutes, formatDateTime, formatNumber, formatPercentage } from '../../lib/formatters';
@@ -27,6 +29,7 @@ export const BottleneckDetailDrawer: React.FC<BottleneckDetailDrawerProps> = ({
   onFilterToTransition,
   onSelectCase,
 }) => {
+  const navigate = useNavigate();
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -170,6 +173,30 @@ export const BottleneckDetailDrawer: React.FC<BottleneckDetailDrawerProps> = ({
                 className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-colors cursor-pointer shrink-0"
               >
                 Apply Filter
+              </button>
+            </div>
+
+            {/* Action Card: Simulate What-If Intervention on this Transition */}
+            <div className="p-3.5 rounded-xl bg-teal-50/60 border border-teal-200/80 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-teal-600 shrink-0" />
+                <div>
+                  <span className="font-bold text-slate-900 block">
+                    Simulate What-If Intervention
+                  </span>
+                  <span className="text-slate-500 text-[11px]">
+                    Model parametric latency reductions and SLA recovery for this transition.
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  navigate(`/simulation?from=${encodeURIComponent(fromActivity)}&to=${encodeURIComponent(toActivity)}`);
+                  onClose();
+                }}
+                className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-colors cursor-pointer shrink-0"
+              >
+                Simulate
               </button>
             </div>
 
