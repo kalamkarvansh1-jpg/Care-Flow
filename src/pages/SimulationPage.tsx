@@ -8,6 +8,8 @@ import {
   Plus,
   Trash2,
   Download,
+  FileText,
+  Code2,
   Clock,
   TrendingDown,
   Layers,
@@ -26,6 +28,8 @@ import { ComparativeTransitionChart } from '../components/simulation/Comparative
 import {
   runWhatIfSimulation,
   exportSimulationToCSV,
+  generateSimulationExecutiveReportMarkdown,
+  exportSimulationReportJSON,
   SIMULATION_MODEL_DISCLAIMER,
 } from '../lib/simulationEngine';
 import {
@@ -315,6 +319,28 @@ export const SimulationPage: React.FC = () => {
     const csvString = exportSimulationToCSV(simulationResult);
     const filename = `CareFlow_Simulation_${simulationResult.scenarioName.replace(/\s+/g, '_')}_${Date.now()}.csv`;
     triggerBrowserDownload(csvString, filename, 'text/csv');
+  };
+
+  // Export Executive Markdown Report Handler
+  const handleExportMarkdown = () => {
+    if (!simulationResult) return;
+    const mdString = generateSimulationExecutiveReportMarkdown(simulationResult, {
+      scenarioNotes,
+      cohortName: datasetMetadata.name,
+    });
+    const filename = `CareFlow_Simulation_Report_${simulationResult.scenarioName.replace(/\s+/g, '_')}_${Date.now()}.md`;
+    triggerBrowserDownload(mdString, filename, 'text/markdown');
+  };
+
+  // Export JSON Report Handler
+  const handleExportJSON = () => {
+    if (!simulationResult) return;
+    const jsonString = exportSimulationReportJSON(simulationResult, {
+      scenarioNotes,
+      cohortName: datasetMetadata.name,
+    });
+    const filename = `CareFlow_Simulation_${simulationResult.scenarioName.replace(/\s+/g, '_')}_${Date.now()}.json`;
+    triggerBrowserDownload(jsonString, filename, 'application/json');
   };
 
   // Filtered case drill-down table results
@@ -777,13 +803,30 @@ export const SimulationPage: React.FC = () => {
               </h3>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleExportMarkdown}
+                title="Download comprehensive Executive Decision-Support Markdown Report"
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 rounded-lg text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-teal-400" />
+                <span>Executive Report (MD)</span>
+              </button>
               <button
                 onClick={handleExportCSV}
+                title="Download raw encounter-level simulation CSV dataset"
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Export Simulation CSV</span>
+                <span>Export CSV</span>
+              </button>
+              <button
+                onClick={handleExportJSON}
+                title="Download audit-grade structured JSON simulation payload"
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+              >
+                <Code2 className="w-3.5 h-3.5 text-cyan-400" />
+                <span>JSON</span>
               </button>
             </div>
           </div>

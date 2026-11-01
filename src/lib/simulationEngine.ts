@@ -517,3 +517,174 @@ export function exportSimulationToCSV(result: SimulationResult): string {
 
   return [...metaRows.map((r) => r.join(',')), ...caseRows.map((r) => r.join(','))].join('\r\n');
 }
+
+/**
+ * Generate a comprehensive, audit-compliant Markdown Executive Decision-Support Report
+ * for a What-If simulation scenario.
+ *
+ * Adheres strictly to the CareFlow clinical analytics reporting standards,
+ * featuring structured KPI tables, latency shift analysis, empirical SLA recovery,
+ * transition breakdowns, outlier encounter profiles, and epistemological governance notices.
+ */
+export function generateSimulationExecutiveReportMarkdown(
+  result: SimulationResult,
+  options?: { scenarioNotes?: string; cohortName?: string }
+): string {
+  const now = new Date().toISOString();
+  const cohortName = options?.cohortName || 'Active Clinical Cohort';
+  const scenarioNotes = options?.scenarioNotes || 'Targeted parametric queue latency streamlining.';
+
+  const kpiRows = [
+    `| Metric | Empirical Baseline | Hypothetical Simulated | Absolute Delta | Relative Change (%) |`,
+    `| :--- | :---: | :---: | :---: | :---: |`,
+    `| **50th Percentile (Median P50)** | ${result.medianDuration.baseline.toFixed(1)}m | ${result.medianDuration.simulated.toFixed(1)}m | ${result.medianDuration.absoluteDelta > 0 ? '+' : ''}${result.medianDuration.absoluteDelta.toFixed(1)}m | ${result.medianDuration.percentageDelta > 0 ? '+' : ''}${result.medianDuration.percentageDelta.toFixed(1)}% |`,
+    `| **90th Percentile (Tail P90)** | ${result.p90Duration.baseline.toFixed(1)}m | ${result.p90Duration.simulated.toFixed(1)}m | ${result.p90Duration.absoluteDelta > 0 ? '+' : ''}${result.p90Duration.absoluteDelta.toFixed(1)}m | ${result.p90Duration.percentageDelta > 0 ? '+' : ''}${result.p90Duration.percentageDelta.toFixed(1)}% |`,
+    `| **Arithmetic Mean** | ${result.meanDuration.baseline.toFixed(1)}m | ${result.meanDuration.simulated.toFixed(1)}m | ${result.meanDuration.absoluteDelta > 0 ? '+' : ''}${result.meanDuration.absoluteDelta.toFixed(1)}m | ${result.meanDuration.percentageDelta > 0 ? '+' : ''}${result.meanDuration.percentageDelta.toFixed(1)}% |`,
+    `| **Minimum Case Duration** | ${result.minDuration.baseline.toFixed(1)}m | ${result.minDuration.simulated.toFixed(1)}m | ${result.minDuration.absoluteDelta > 0 ? '+' : ''}${result.minDuration.absoluteDelta.toFixed(1)}m | ${result.minDuration.percentageDelta > 0 ? '+' : ''}${result.minDuration.percentageDelta.toFixed(1)}% |`,
+    `| **Maximum Case Duration** | ${result.maxDuration.baseline.toFixed(1)}m | ${result.maxDuration.simulated.toFixed(1)}m | ${result.maxDuration.absoluteDelta > 0 ? '+' : ''}${result.maxDuration.absoluteDelta.toFixed(1)}m | ${result.maxDuration.percentageDelta > 0 ? '+' : ''}${result.maxDuration.percentageDelta.toFixed(1)}% |`,
+  ].join('\n');
+
+  const transitionRows =
+    result.transitionResults.length > 0
+      ? [
+          `| Step Transition | Targeted Encounters | Baseline Median | Simulated Median | Baseline P90 | Simulated P90 | Total Patient Time Saved |`,
+          `| :--- | :---: | :---: | :---: | :---: | :---: | :---: |`,
+          ...result.transitionResults.map((t) => {
+            const label = t.interventionLabel
+              ? `**${t.from} → ${t.to}**<br>*(${t.interventionLabel})*`
+              : `**${t.from} → ${t.to}**`;
+            return `| ${label} | ${t.affectedCasesCount.toLocaleString()} | ${t.baselineMedianMinutes.toFixed(1)}m | ${t.simulatedMedianMinutes.toFixed(1)}m | ${t.baselineP90Minutes.toFixed(1)}m | ${t.simulatedP90Minutes.toFixed(1)}m | **${t.totalSavedMinutes.toLocaleString()} min** |`;
+          }),
+        ].join('\n')
+      : `*No transition interventions recorded.*`;
+
+  // Top impacted sample cases (up to 10)
+  const topCases = [...result.caseResults]
+    .sort((a, b) => b.savedMinutes - a.savedMinutes)
+    .slice(0, 10);
+
+  const caseRows = [
+    `| Case Identifier | Baseline Duration | Simulated Duration | Elapsed Time Saved | Reduction (%) | Steps Traversed | Empirical Benchmark Status |`,
+    `| :--- | :---: | :---: | :---: | :---: | :---: | :---: |`,
+    ...topCases.map((c) => {
+      const statusBadge = c.isThresholdRecovered
+        ? '✅ **SLA Recovered**'
+        : c.isExceedingThresholdSimulated
+        ? '⚠️ *Still Exceeding*'
+        : '🟢 Within Benchmark';
+      return `| \`${c.caseId}\` | ${c.baselineDurationMinutes.toFixed(1)}m | ${c.simulatedDurationMinutes.toFixed(1)}m | **-${c.savedMinutes.toFixed(1)}m** | ${c.percentageReduction.toFixed(1)}% | ${c.traversedInterventionsCount} | ${statusBadge} |`;
+    }),
+  ].join('\n');
+
+  const thresholdDisplay =
+    result.empiricalThresholdMinutes !== null && result.empiricalThresholdMinutes !== undefined
+      ? `${result.empiricalThresholdMinutes} minutes`
+      : 'Not configured';
+
+  return `# CareFlow What-If Simulation — Executive Decision-Support Report
+
+> [!WARNING]
+> **Epistemological Notice & Operational Simulation Scope:**
+> ${result.modelNotice}
+
+---
+
+## 1. Scenario Executive Overview
+
+- **Scenario Name:** ${result.scenarioName}
+- **Scenario Identifier:** \`${result.scenarioId}\`
+- **Clinical Cohort Scope:** ${cohortName}
+- **Generated At:** ${now}
+- **Operational Objective:** ${scenarioNotes}
+
+### Cohort Throughput & Latency Impact
+- **Total Patient Encounters Evaluated:** **${result.totalCasesEvaluated.toLocaleString()} cases**
+- **Encounters Traversed by Targeted Interventions:** **${result.affectedCasesCount.toLocaleString()} cases** (${result.affectedCasesPercentage.toFixed(1)}% cohort penetration)
+- **Cumulative Patient Dwell-Time Eliminated:** **${result.totalHypotheticalMinutesSaved.toLocaleString()} minutes** (~**${result.totalHypotheticalHoursSaved.toFixed(1)} patient hours**)
+
+---
+
+## 2. Key Latency Shift Metrics (Baseline vs. Simulated)
+
+${kpiRows}
+
+---
+
+## 3. Modeled Empirical SLA Recovery & Capacity Relinquishment
+
+- **Active Empirical Benchmark Threshold:** **${thresholdDisplay}**
+- **Baseline Cases Exceeding Benchmark:** **${result.casesExceedingThresholdBaseline.toLocaleString()} encounters**
+- **Simulated Cases Exceeding Benchmark:** **${result.casesExceedingThresholdSimulated.toLocaleString()} encounters**
+- **Modeled SLA Recoveries:** **${result.recoveredCasesCount.toLocaleString()} encounters**
+- **Modeled Recovery Rate:** **${result.recoveredCasesPercentage.toFixed(1)}%** of previously delayed cases recovered within the benchmark
+
+---
+
+## 4. Targeted Transition Intervention Breakdown
+
+${transitionRows}
+
+---
+
+## 5. Sample High-Impact Encounter Profiles
+
+${caseRows}
+
+---
+
+## 6. Clinical Governance & Decision-Support Review Guidelines
+
+1. **Parametric Assumptions:** All modeled time reductions represent idealized queue streamlining or protocol fast-tracks. Actual clinical implementation requires capacity, staffing, and clinical safety feasibility validation.
+2. **Preservation of Clinical Safeguards:** Streamlining turnaround intervals must never compromise diagnostic thoroughness, specimen testing protocols, or physician consultation quality.
+3. **Audit Trail Verification:** This executive report is deterministically computed in client-side memory from the active scenario configuration and local event log.
+`;
+}
+
+/**
+ * Export simulation scenario results to a structured audit-compliant JSON format.
+ */
+export function exportSimulationReportJSON(
+  result: SimulationResult,
+  metadata?: { scenarioNotes?: string; cohortName?: string }
+): string {
+  const payload = {
+    reportType: 'CareFlow_Simulation_Executive_Report',
+    version: '1.0.0',
+    generatedAtUtc: new Date().toISOString(),
+    scenario: {
+      id: result.scenarioId,
+      name: result.scenarioName,
+      description: metadata?.scenarioNotes || '',
+      cohortName: metadata?.cohortName || '',
+      empiricalThresholdMinutes: result.empiricalThresholdMinutes ?? null,
+    },
+    cohortSummary: {
+      totalCasesEvaluated: result.totalCasesEvaluated,
+      affectedCasesCount: result.affectedCasesCount,
+      affectedCasesPercentage: result.affectedCasesPercentage,
+      totalHypotheticalMinutesSaved: result.totalHypotheticalMinutesSaved,
+      totalHypotheticalHoursSaved: result.totalHypotheticalHoursSaved,
+    },
+    kpiDeltas: {
+      medianDuration: result.medianDuration,
+      p90Duration: result.p90Duration,
+      meanDuration: result.meanDuration,
+      minDuration: result.minDuration,
+      maxDuration: result.maxDuration,
+    },
+    slaRecovery: {
+      empiricalThresholdMinutes: result.empiricalThresholdMinutes ?? null,
+      casesExceedingBaseline: result.casesExceedingThresholdBaseline,
+      casesExceedingSimulated: result.casesExceedingThresholdSimulated,
+      recoveredCasesCount: result.recoveredCasesCount,
+      recoveredCasesPercentage: result.recoveredCasesPercentage,
+    },
+    interventions: result.transitionResults,
+    topImpactCases: [...result.caseResults]
+      .sort((a, b) => b.savedMinutes - a.savedMinutes)
+      .slice(0, 25),
+    governanceDisclaimer: result.modelNotice,
+  };
+
+  return JSON.stringify(payload, null, 2);
+}
