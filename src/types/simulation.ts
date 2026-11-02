@@ -160,3 +160,73 @@ export interface SimulationResult {
   /** Methodological disclaimer and model notice */
   modelNotice: string;
 }
+
+/**
+ * Detailed statistical quantile distribution for encounter durations.
+ */
+export interface DetailedStatisticalDistribution {
+  min: number;
+  max: number;
+  mean: number;
+  p25: number;
+  p50: number; // Median
+  p75: number;
+  p90: number;
+  iqr: number;
+}
+
+/**
+ * Comprehensive comparative distribution deltas between baseline and simulated cohorts.
+ */
+export interface ComparativeDistributionSummary {
+  min: ComparativeMetricDelta;
+  max: ComparativeMetricDelta;
+  mean: ComparativeMetricDelta;
+  p25: ComparativeMetricDelta;
+  p50: ComparativeMetricDelta;
+  p75: ComparativeMetricDelta;
+  p90: ComparativeMetricDelta;
+  iqr: ComparativeMetricDelta;
+}
+
+/**
+ * Summary comparison of a distinct simulation scenario configuration.
+ */
+export interface ScenarioComparisonSummary {
+  scenarioId: string;
+  scenarioName: string;
+  scenarioDescription: string;
+  interventionsCount: number;
+  affectedCasesCount: number;
+  affectedCasesPercentage: number;
+  simulatedMedianMinutes: number;
+  simulatedP90Minutes: number;
+  totalMinutesSaved: number;
+  totalHoursSaved: number;
+  recoveredCasesCount: number;
+  recoveredCasesPercentage: number;
+  isOptimalSavings?: boolean;
+}
+
+/**
+ * Performance benchmarking metrics for simulation and reporting execution.
+ */
+export interface SimulationPerformanceMetrics {
+  scenarioCalculationMs: number;
+  statisticalCalculationMs: number;
+  markdownGenerationMs: number;
+  totalExecutionMs: number;
+}
+
+/**
+ * Parameters for building an Executive Decision-Support Report.
+ */
+export interface DecisionSupportReportParams {
+  simulationResult: SimulationResult;
+  cohortName: string;
+  casesCount: number;
+  eventsCount: number;
+  scenarioNotes?: string;
+  comparisonScenarios?: ScenarioComparisonSummary[];
+  performanceMetrics?: SimulationPerformanceMetrics;
+}

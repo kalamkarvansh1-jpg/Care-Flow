@@ -1368,3 +1368,6 @@ export * from './conformanceEngine';
 
 // Re-export Phase 6 Operational Bottleneck Intervention & What-If Simulation Engine
 export * from './simulationEngine';
+
+// Re-export Phase 6 Executive Decision-Support Reporting & Scenario Validation
+export * from './decisionSupportReport';

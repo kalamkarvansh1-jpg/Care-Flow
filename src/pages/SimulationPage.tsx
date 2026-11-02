@@ -19,6 +19,7 @@ import {
   Search,
   Database,
   Check,
+  Copy,
 } from 'lucide-react';
 import { useDataset } from '../context/useDataset';
 import { DATASET_PRESETS } from '../data/demoData';
@@ -37,6 +38,7 @@ import {
   ED_SEPSIS_EMPIRICAL_P90_SLA_MINUTES,
   CARDIOLOGY_EMPIRICAL_P90_SLA_MINUTES,
 } from '../lib/dataProcessing';
+import { benchmarkSimulationPerformance } from '../lib/decisionSupportReport';
 import { formatDurationMinutes, formatNumber, formatPercentage } from '../lib/formatters';
 import {
   SimulationIntervention,
@@ -135,6 +137,8 @@ export const SimulationPage: React.FC = () => {
 
   const [caseSearchTerm, setCaseSearchTerm] = useState<string>('');
   const [manualRunCounter, setManualRunCounter] = useState<number>(0);
+  const [reportActiveTab, setReportActiveTab] = useState<'scenarios' | 'stats' | 'preview' | 'perf'>('scenarios');
+  const [isReportCopied, setIsReportCopied] = useState<boolean>(false);
 
   // Pure reactive simulation outcome evaluation
   const simulationResult = useMemo(() => {
@@ -158,6 +162,51 @@ export const SimulationPage: React.FC = () => {
       return null;
     }
   }, [filteredCases, interventions, scenarioName, scenarioNotes, activeThreshold, manualRunCounter]);
+
+  // Comprehensive Decision-Support Analysis & Performance Metrics
+  const decisionSupportData = useMemo(() => {
+    if (!simulationResult || filteredCases.length === 0) return null;
+
+    const topB = filteredBottlenecks[0]
+      ? {
+          from: filteredBottlenecks[0].label.split(' → ')[0] || '',
+          to: filteredBottlenecks[0].label.split(' → ')[1] || '',
+          label: filteredBottlenecks[0].label,
+        }
+      : undefined;
+
+    const validInterventions = interventions.filter((i) => i.from.trim() && i.to.trim());
+    const scenarioConfig: SimulationScenario = {
+      id: `scen-${scenarioName.replace(/\s+/g, '-').toLowerCase()}-${manualRunCounter}`,
+      name: scenarioName.trim() || 'Operational Intervention Scenario',
+      description: scenarioNotes.trim(),
+      interventions: validInterventions,
+      empiricalThresholdMinutes: activeThreshold > 0 ? activeThreshold : undefined,
+    };
+
+    const totalEventsInCohort = filteredCases.reduce((sum, c) => sum + (c.events?.length || 0), 0);
+
+    try {
+      return benchmarkSimulationPerformance(filteredCases, scenarioConfig, {
+        cohortName: datasetMetadata.name || 'CareFlow Cohort',
+        eventsCount: totalEventsInCohort,
+        topBottleneck: topB,
+      });
+    } catch (err) {
+      console.error('Decision-support calculation error:', err);
+      return null;
+    }
+  }, [
+    simulationResult,
+    filteredCases,
+    filteredBottlenecks,
+    interventions,
+    scenarioName,
+    scenarioNotes,
+    activeThreshold,
+    manualRunCounter,
+    datasetMetadata.name,
+  ]);
 
   // Execute simulation manual trigger / scroll to results
   const handleRunSimulation = useCallback(() => {
@@ -322,26 +371,45 @@ export const SimulationPage: React.FC = () => {
   };
 
   // Export Executive Markdown Report Handler
-  const handleExportMarkdown = () => {
+  const handleExportMarkdown = useCallback(() => {
     if (!simulationResult) return;
-    const mdString = generateSimulationExecutiveReportMarkdown(simulationResult, {
-      scenarioNotes,
-      cohortName: datasetMetadata.name,
-    });
-    const filename = `CareFlow_Simulation_Report_${simulationResult.scenarioName.replace(/\s+/g, '_')}_${Date.now()}.md`;
+    const mdString =
+      decisionSupportData?.reportMarkdown ||
+      generateSimulationExecutiveReportMarkdown(simulationResult, {
+        scenarioNotes,
+        cohortName: datasetMetadata.name,
+      });
+    const filename = `CareFlow_Decision_Support_Report_${simulationResult.scenarioName.replace(/\s+/g, '_')}_${Date.now()}.md`;
     triggerBrowserDownload(mdString, filename, 'text/markdown');
-  };
+  }, [decisionSupportData, simulationResult, scenarioNotes, datasetMetadata.name]);
 
   // Export JSON Report Handler
-  const handleExportJSON = () => {
+  const handleExportJSON = useCallback(() => {
     if (!simulationResult) return;
-    const jsonString = exportSimulationReportJSON(simulationResult, {
-      scenarioNotes,
-      cohortName: datasetMetadata.name,
-    });
-    const filename = `CareFlow_Simulation_${simulationResult.scenarioName.replace(/\s+/g, '_')}_${Date.now()}.json`;
+    const jsonString =
+      decisionSupportData?.reportJson ||
+      exportSimulationReportJSON(simulationResult, {
+        scenarioNotes,
+        cohortName: datasetMetadata.name,
+      });
+    const filename = `CareFlow_Decision_Support_Report_${simulationResult.scenarioName.replace(/\s+/g, '_')}_${Date.now()}.json`;
     triggerBrowserDownload(jsonString, filename, 'application/json');
-  };
+  }, [decisionSupportData, simulationResult, scenarioNotes, datasetMetadata.name]);
+
+  // Copy Markdown Report to Clipboard
+  const handleCopyMarkdown = useCallback(async () => {
+    const md = decisionSupportData?.reportMarkdown;
+    if (!md) return;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(md);
+        setIsReportCopied(true);
+        setTimeout(() => setIsReportCopied(false), 2000);
+      }
+    } catch (err) {
+      console.error('Failed to copy markdown to clipboard:', err);
+    }
+  }, [decisionSupportData]);
 
   // Filtered case drill-down table results
   const filteredCaseResults = useMemo(() => {
@@ -999,6 +1067,266 @@ export const SimulationPage: React.FC = () => {
               <span>Empirical benchmark: {simulationResult.empiricalThresholdMinutes}m</span>
             </div>
           </div>
+
+          {/* Executive Decision-Support Report & Multi-Scenario Section */}
+          {decisionSupportData && (
+            <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden space-y-0">
+              <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-teal-50 border border-teal-200/80 rounded-lg text-teal-700">
+                    <FileText className="w-5 h-5 text-teal-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Executive Decision-Support Report & Multi-Scenario Matrix
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Standardized linear quantile comparison, scenario sensitivity ranking, and audit-grade Markdown preview
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center bg-slate-200/60 p-1 rounded-lg border border-slate-200/90 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setReportActiveTab('scenarios')}
+                      className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
+                        reportActiveTab === 'scenarios'
+                          ? 'bg-white text-teal-700 shadow-2xs font-semibold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Scenario Matrix
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReportActiveTab('stats')}
+                      className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
+                        reportActiveTab === 'stats'
+                          ? 'bg-white text-teal-700 shadow-2xs font-semibold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Statistical Quantiles
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReportActiveTab('preview')}
+                      className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
+                        reportActiveTab === 'preview'
+                          ? 'bg-white text-teal-700 shadow-2xs font-semibold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Markdown Preview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReportActiveTab('perf')}
+                      className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
+                        reportActiveTab === 'perf'
+                          ? 'bg-white text-teal-700 shadow-2xs font-semibold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Performance
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tab 1: Scenario Comparison Matrix */}
+              {reportActiveTab === 'scenarios' && (
+                <div className="p-5 space-y-4">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                        <tr>
+                          <th className="py-2.5 px-3.5">Scenario Configuration</th>
+                          <th className="py-2.5 px-3">Steps</th>
+                          <th className="py-2.5 px-3">Affected Encounters</th>
+                          <th className="py-2.5 px-3">Simulated P50 / P90</th>
+                          <th className="py-2.5 px-3 text-teal-700">Cumulative Time Saved</th>
+                          <th className="py-2.5 px-3">Modeled Recovery</th>
+                          <th className="py-2.5 px-3 text-right">Optimization Ranking</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {decisionSupportData.comparisonScenarios.map((scen) => (
+                          <tr
+                            key={scen.scenarioId}
+                            className={`transition-colors ${
+                              scen.isOptimalSavings ? 'bg-emerald-50/40 hover:bg-emerald-50/70' : 'hover:bg-slate-50/60'
+                            }`}
+                          >
+                            <td className="py-3 px-3.5">
+                              <span className="font-semibold text-slate-900 block">{scen.scenarioName}</span>
+                              <span className="text-[11px] text-slate-500 line-clamp-1">{scen.scenarioDescription}</span>
+                            </td>
+                            <td className="py-3 px-3 font-mono text-slate-600">{scen.interventionsCount}</td>
+                            <td className="py-3 px-3">
+                              <span className="font-mono text-slate-800">{formatNumber(scen.affectedCasesCount)}</span>
+                              <span className="text-[10px] text-slate-400 block">({scen.affectedCasesPercentage.toFixed(1)}%)</span>
+                            </td>
+                            <td className="py-3 px-3 font-mono text-slate-700">
+                              {formatDurationMinutes(scen.simulatedMedianMinutes)} <span className="text-slate-400">•</span> {formatDurationMinutes(scen.simulatedP90Minutes)}
+                            </td>
+                            <td className="py-3 px-3 font-mono font-bold text-teal-700">
+                              {scen.totalHoursSaved.toFixed(1)} hrs <span className="text-[10px] font-normal text-slate-500">({formatNumber(scen.totalMinutesSaved)}m)</span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-mono text-slate-800">{formatNumber(scen.recoveredCasesCount)}</span>
+                              <span className="text-[10px] text-slate-400 block">({scen.recoveredCasesPercentage.toFixed(1)}% rate)</span>
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              {scen.isOptimalSavings ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                  <Sparkles className="w-3 h-3 text-emerald-600" />
+                                  Optimal Efficiency
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-xs">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="p-3 bg-amber-50/60 border border-amber-200/70 rounded-lg text-[11px] text-amber-900/90 leading-relaxed">
+                    <strong>Operational Decision-Support Note:</strong> Scenarios are evaluated across the identical cohort without state carryover. The <em>Optimal Efficiency</em> designation represents maximum mathematical dwell-time reduction under parametric assumptions. Implementation feasibility must be validated against staffing and clinical safety constraints.
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 2: Statistical Quantile Comparison */}
+              {reportActiveTab === 'stats' && (
+                <div className="p-5 space-y-4">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                        <tr>
+                          <th className="py-2.5 px-3.5">Statistical Quantile Metric</th>
+                          <th className="py-2.5 px-3">Empirical Baseline</th>
+                          <th className="py-2.5 px-3 font-semibold text-slate-800">Hypothetical Simulated</th>
+                          <th className="py-2.5 px-3 text-teal-700">Absolute Shift</th>
+                          <th className="py-2.5 px-3 text-right">Relative Shift (%)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-mono">
+                        {[
+                          { label: 'Minimum (Min)', data: decisionSupportData.stats.min },
+                          { label: '25th Percentile (P25)', data: decisionSupportData.stats.p25 },
+                          { label: '50th Percentile (Median P50)', data: decisionSupportData.stats.p50, highlight: true },
+                          { label: 'Arithmetic Mean', data: decisionSupportData.stats.mean },
+                          { label: '75th Percentile (P75)', data: decisionSupportData.stats.p75 },
+                          { label: '90th Percentile (Tail P90)', data: decisionSupportData.stats.p90, highlight: true },
+                          { label: 'Maximum (Max)', data: decisionSupportData.stats.max },
+                          { label: 'Interquartile Range (IQR)', data: decisionSupportData.stats.iqr },
+                        ].map((row) => (
+                          <tr key={row.label} className={row.highlight ? 'bg-slate-50/70' : 'hover:bg-slate-50/50'}>
+                            <td className="py-2.5 px-3.5 font-sans font-medium text-slate-800">{row.label}</td>
+                            <td className="py-2.5 px-3 text-slate-600">{formatDurationMinutes(row.data.baseline)}</td>
+                            <td className="py-2.5 px-3 font-bold text-slate-900">{formatDurationMinutes(row.data.simulated)}</td>
+                            <td className={`py-2.5 px-3 font-semibold ${row.data.absoluteDelta <= 0 ? 'text-teal-700' : 'text-rose-700'}`}>
+                              {row.data.absoluteDelta > 0 ? '+' : ''}{formatDurationMinutes(row.data.absoluteDelta)}
+                            </td>
+                            <td className={`py-2.5 px-3 text-right font-semibold ${row.data.percentageDelta <= 0 ? 'text-teal-700' : 'text-rose-700'}`}>
+                              {row.data.percentageDelta > 0 ? '+' : ''}{row.data.percentageDelta.toFixed(1)}%
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-500 flex items-center justify-between">
+                    <span>Linear continuous quantile interpolation matching PM4Py / NumPy <code>method='linear'</code>.</span>
+                    <span>Evaluated cases: {formatNumber(filteredCases.length)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 3: Markdown Preview */}
+              {reportActiveTab === 'preview' && (
+                <div className="p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-medium text-slate-500">
+                      CareFlow_Decision_Support_Report.md
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCopyMarkdown}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+                      >
+                        {isReportCopied ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-emerald-700">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-slate-600" />
+                            <span>Copy Markdown</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleExportMarkdown}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-semibold shadow-2xs cursor-pointer transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download .md</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-xs font-mono leading-relaxed overflow-x-auto max-h-96 border border-slate-800 shadow-inner select-text">
+                      {decisionSupportData.reportMarkdown}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 4: Performance Timings */}
+              {reportActiveTab === 'perf' && (
+                <div className="p-5 space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+                      <span className="text-[11px] text-slate-400 block">Scenario Calculation</span>
+                      <span className="text-lg font-bold font-mono text-slate-800">
+                        {decisionSupportData.metrics.scenarioCalculationMs.toFixed(1)} ms
+                      </span>
+                    </div>
+                    <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+                      <span className="text-[11px] text-slate-400 block">Statistical Quantiles</span>
+                      <span className="text-lg font-bold font-mono text-slate-800">
+                        {decisionSupportData.metrics.statisticalCalculationMs.toFixed(1)} ms
+                      </span>
+                    </div>
+                    <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+                      <span className="text-[11px] text-slate-400 block">Report Generation</span>
+                      <span className="text-lg font-bold font-mono text-slate-800">
+                        {decisionSupportData.metrics.markdownGenerationMs.toFixed(1)} ms
+                      </span>
+                    </div>
+                    <div className="p-3.5 bg-teal-50 rounded-lg border border-teal-200">
+                      <span className="text-[11px] text-teal-600 block">Total Pipeline</span>
+                      <span className="text-lg font-bold font-mono text-teal-800">
+                        {decisionSupportData.metrics.totalExecutionMs.toFixed(1)} ms
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    All timings captured in-browser via the High Resolution Time API (<code>performance.now()</code>). Timings reflect local thread execution; universal performance guarantees are not claimed.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
