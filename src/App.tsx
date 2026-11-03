@@ -5,6 +5,7 @@ import { AppShell } from './components/layout/AppShell';
 import { OverviewPage } from './pages/OverviewPage';
 import { ProcessAnalysisPage } from './pages/ProcessAnalysisPage';
 import { SimulationPage } from './pages/SimulationPage';
+import { ProjectReviewPage } from './pages/ProjectReviewPage';
 
 export function App() {
   return (
@@ -16,6 +17,7 @@ export function App() {
             <Route path="overview" element={<OverviewPage />} />
             <Route path="process-analysis" element={<ProcessAnalysisPage />} />
             <Route path="simulation" element={<SimulationPage />} />
+            <Route path="project-review" element={<ProjectReviewPage />} />
             <Route path="*" element={<Navigate to="/overview" replace />} />
           </Route>
         </Routes>

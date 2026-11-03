@@ -10,6 +10,7 @@ import {
   Activity,
   ShieldAlert,
   Download,
+  Award,
 } from 'lucide-react';
 import { useDataset } from '../../context/useDataset';
 import { LoadDatasetModal } from '../dataset/LoadDatasetModal';
@@ -22,7 +23,14 @@ export const AppShell: React.FC = () => {
 
   const isOverview = location.pathname.includes('/overview') || location.pathname === '/';
   const isSimulation = location.pathname.includes('/simulation');
-  const pageTitle = isOverview ? 'Overview' : isSimulation ? 'What-If Simulation' : 'Process Analysis';
+  const isReview = location.pathname.includes('/project-review');
+  const pageTitle = isOverview
+    ? 'Overview'
+    : isSimulation
+      ? 'What-If Simulation'
+      : isReview
+        ? 'Project Review'
+        : 'Process Analysis';
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans antialiased">
@@ -56,9 +64,8 @@ export const AppShell: React.FC = () => {
 
         {/* Left Sidebar (Only Two Navigation Items: Overview and Process Analysis) */}
         <aside
-          className={`fixed top-0 bottom-0 left-0 z-40 w-56 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 transition-transform duration-200 lg:translate-x-0 ${
-            mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
+          className={`fixed top-0 bottom-0 left-0 z-40 w-56 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 transition-transform duration-200 lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
         >
           {/* Brand Mark Header */}
           <div className="h-14 px-4 flex items-center justify-between border-b border-slate-800/80 bg-slate-950/40">
@@ -93,10 +100,9 @@ export const AppShell: React.FC = () => {
               to="/overview"
               onClick={() => setMobileMenuOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
-                  isActive
-                    ? 'bg-sky-600 text-white shadow-2xs'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${isActive
+                  ? 'bg-sky-600 text-white shadow-2xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                 }`
               }
             >
@@ -108,10 +114,9 @@ export const AppShell: React.FC = () => {
               to="/process-analysis"
               onClick={() => setMobileMenuOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
-                  isActive
-                    ? 'bg-sky-600 text-white shadow-2xs'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${isActive
+                  ? 'bg-sky-600 text-white shadow-2xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                 }`
               }
             >
@@ -123,15 +128,28 @@ export const AppShell: React.FC = () => {
               to="/simulation"
               onClick={() => setMobileMenuOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
-                  isActive
-                    ? 'bg-sky-600 text-white shadow-2xs'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${isActive
+                  ? 'bg-sky-600 text-white shadow-2xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                 }`
               }
             >
               <SlidersHorizontal className="w-4 h-4 shrink-0" />
               <span>What-If Simulation</span>
+            </NavLink>
+
+            <NavLink
+              to="/project-review"
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${isActive
+                  ? 'bg-sky-600 text-white shadow-2xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                }`
+              }
+            >
+              <Award className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>Project Review</span>
             </NavLink>
           </nav>
 
