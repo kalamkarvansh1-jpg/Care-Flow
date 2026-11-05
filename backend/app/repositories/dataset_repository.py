@@ -7,7 +7,10 @@ and synthetic demonstration cohorts.
 
 import hashlib
 import logging
+import math
 import re
+from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -15,6 +18,17 @@ import numpy as np
 import pandas as pd
 
 from backend.app.core.exceptions import CareFlowException, ResourceNotFoundException, ValidationException
+from backend.app.repositories.demo_data import (
+    generate_cardiology_events,
+    generate_outpatient_events,
+    generate_sepsis_events,
+)
+from backend.app.schemas.cases import (
+    CaseDetailResponse,
+    CaseEvent,
+    CaseItem,
+    PaginatedCasesResponse,
+)
 from backend.app.schemas.datasets import (
     ActivityTransition,
     BottleneckItem,
@@ -33,6 +47,14 @@ CANONICAL_HASHES: Dict[str, str] = {
     "event_log.csv": "cdab7bbc0e6755cb927a2a627bff2108e48d94ce0e38f62354ed72dcfb63442d",
 }
 
+# Empirical P90 SLA benchmarks across supported cohorts
+DATASET_SLA_BENCHMARKS: Dict[str, float] = {
+    "preset-sepsis-2026": 332.0,
+    "preset-careflow-outpatient-2026": 196.0,
+    "preset-cardiology-2026": 180.0,
+    "canonical-event-log": 196.0,
+}
+
 SAFE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_\-]+$")
 
 
@@ -49,6 +71,8 @@ class DatasetRepository:
 
         self._df_cache: Dict[str, pd.DataFrame] = {}
         self._summary_cache: Dict[str, DatasetSummaryResponse] = {}
+        self._cases_cache: Dict[str, List[CaseItem]] = {}
+        self._case_events_cache: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
 
     # ------------------------------------------------------------------
     # Data Integrity & Hash Verification
@@ -114,6 +138,20 @@ class DatasetRepository:
             raise ResourceNotFoundException(
                 f"Dataset '{dataset_id}' not found.",
                 details={"dataset_id": dataset_id, "supported_datasets": sorted(list(allowed_ids))},
+            )
+
+    def validate_case_id(self, case_id: str) -> None:
+        """Validates case ID to strictly prevent directory traversal and injection attacks."""
+        if not case_id or not isinstance(case_id, str):
+            raise ValidationException(
+                "Case ID must be a non-empty string.",
+                details={"case_id": str(case_id)},
+            )
+
+        if not SAFE_ID_PATTERN.match(case_id) or ".." in case_id or "/" in case_id or "\\" in case_id:
+            raise ValidationException(
+                f"Invalid case ID format: '{case_id}'. Must be alphanumeric with hyphens or underscores.",
+                details={"case_id": case_id},
             )
 
     # ------------------------------------------------------------------
@@ -752,4 +790,259 @@ class DatasetRepository:
             bottlenecks=bottlenecks,
             distinct_variants_count=1,
             top_variants_summary=top_variants,
+        )
+
+    # ------------------------------------------------------------------
+    # Case Retrieval & Pagination
+    # ------------------------------------------------------------------
+
+    def _get_or_load_cases(
+        self, dataset_id: str
+    ) -> Tuple[List[CaseItem], Dict[str, List[Dict[str, Any]]]]:
+        """Loads and caches case summaries and raw events in memory for fast retrieval."""
+        if dataset_id in self._cases_cache and dataset_id in self._case_events_cache:
+            return self._cases_cache[dataset_id], self._case_events_cache[dataset_id]
+
+        if dataset_id == "canonical-event-log":
+            cases, events_by_case = self._load_canonical_cases()
+        elif dataset_id == "preset-sepsis-2026":
+            cases, events_by_case = self._load_preset_cases(dataset_id, generate_sepsis_events())
+        elif dataset_id == "preset-careflow-outpatient-2026":
+            cases, events_by_case = self._load_preset_cases(dataset_id, generate_outpatient_events())
+        elif dataset_id == "preset-cardiology-2026":
+            cases, events_by_case = self._load_preset_cases(dataset_id, generate_cardiology_events())
+        else:
+            raise ResourceNotFoundException(f"Dataset '{dataset_id}' not found.")
+
+        self._cases_cache[dataset_id] = cases
+        self._case_events_cache[dataset_id] = events_by_case
+        return cases, events_by_case
+
+    def _load_canonical_cases(self) -> Tuple[List[CaseItem], Dict[str, List[Dict[str, Any]]]]:
+        """Loads and indexes the 49,912 canonical encounter cases from disk in a single pass."""
+        event_log_path = self.data_dir / "processed" / "event_log.csv"
+        if not event_log_path.exists():
+            raise ResourceNotFoundException(
+                "Canonical event log file 'event_log.csv' not found on disk.",
+                details={"expected_path": str(event_log_path)},
+            )
+
+        try:
+            df = pd.read_csv(event_log_path, low_memory=False)
+        except Exception as e:
+            raise ValidationException(f"Failed to read canonical event log: {e}")
+
+        df["dt"] = pd.to_datetime(df["timestamp"])
+        df = df.sort_values(["case_id", "dt"])
+
+        records = df[["case_id", "activity", "dt", "stage", "source_order_id", "source_record_no"]].to_dict("records")
+        grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for r in records:
+            grouped[str(r["case_id"])].append(r)
+
+        cases: List[CaseItem] = []
+        for case_id, raw_events in grouped.items():
+            act_seq = [r["activity"] for r in raw_events]
+            start_dt = raw_events[0]["dt"]
+            end_dt = raw_events[-1]["dt"]
+            dur_mins = round((end_dt - start_dt).total_seconds() / 60.0, 1)
+            dept = raw_events[0].get("stage")
+
+            cases.append(
+                CaseItem(
+                    case_id=case_id,
+                    start_time=start_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    end_time=end_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    duration_minutes=dur_mins,
+                    event_count=len(raw_events),
+                    activity_sequence=act_seq,
+                    variant_key=" → ".join(act_seq),
+                    department=dept,
+                    status="Completed",
+                )
+            )
+
+        return cases, dict(grouped)
+
+    def _load_preset_cases(
+        self, dataset_id: str, raw_events: List[Dict[str, Any]]
+    ) -> Tuple[List[CaseItem], Dict[str, List[Dict[str, Any]]]]:
+        """Groups synthetic demonstration events and generates standardized CaseItem records."""
+        grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for r in raw_events:
+            grouped[str(r["case_id"])].append(r)
+
+        cases: List[CaseItem] = []
+        for case_id, events in grouped.items():
+            act_seq = [e["activity"] for e in events]
+            start_ms = events[0]["timestamp_ms"]
+            end_ms = events[-1]["timestamp_ms"]
+            start_dt = datetime.fromtimestamp(start_ms / 1000.0, tz=timezone.utc)
+            end_dt = datetime.fromtimestamp(end_ms / 1000.0, tz=timezone.utc)
+            dur_mins = round((end_ms - start_ms) / 60000.0, 1)
+
+            cases.append(
+                CaseItem(
+                    case_id=case_id,
+                    start_time=start_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    end_time=end_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    duration_minutes=dur_mins,
+                    event_count=len(events),
+                    activity_sequence=act_seq,
+                    variant_key=" → ".join(act_seq),
+                    department=events[0].get("department"),
+                    status=events[-1].get("status", "Completed"),
+                )
+            )
+
+        return cases, dict(grouped)
+
+    def get_cases(
+        self,
+        dataset_id: str,
+        page: int = 1,
+        page_size: int = 25,
+        sort_by: str = "durationMinutes",
+        sort_dir: str = "desc",
+        search: Optional[str] = None,
+        variant_key: Optional[str] = None,
+        activity: Optional[str] = None,
+    ) -> PaginatedCasesResponse:
+        """Retrieves paginated, filtered, and sorted patient encounter traces."""
+        self.validate_dataset_id(dataset_id)
+
+        if page < 1:
+            raise ValidationException("Page parameter must be an integer >= 1.", details={"page": page})
+        if page_size < 1 or page_size > 200:
+            raise ValidationException("Page size must be an integer between 1 and 200.", details={"page_size": page_size})
+
+        sort_dir_clean = sort_dir.lower().strip()
+        if sort_dir_clean not in ("asc", "desc"):
+            raise ValidationException(
+                f"Unsupported sort_dir '{sort_dir}'. Allowed: 'asc', 'desc'.",
+                details={"sort_dir": sort_dir},
+            )
+
+        all_cases, _ = self._get_or_load_cases(dataset_id)
+        filtered_cases = list(all_cases)
+
+        # Apply search filter (case-insensitive substring match on case_id)
+        if search and search.strip():
+            s = search.lower().strip()
+            filtered_cases = [c for c in filtered_cases if s in c.case_id.lower()]
+
+        # Apply variant_key filter
+        if variant_key and variant_key.strip() and variant_key.strip().lower() != "all":
+            vk = variant_key.lower().strip()
+            filtered_cases = [c for c in filtered_cases if vk in c.variant_key.lower()]
+
+        # Apply activity filter (activity sequence contains this activity)
+        if activity and activity.strip() and activity.strip().lower() != "all":
+            act = activity.lower().strip()
+            filtered_cases = [c for c in filtered_cases if any(act == a.lower() for a in c.activity_sequence)]
+
+        reverse = (sort_dir_clean == "desc")
+        sort_by_clean = sort_by.strip()
+        if sort_by_clean in ("durationMinutes", "duration_minutes"):
+            filtered_cases.sort(key=lambda c: (c.duration_minutes, c.case_id), reverse=reverse)
+        elif sort_by_clean in ("startTime", "start_time"):
+            filtered_cases.sort(key=lambda c: (c.start_time, c.case_id), reverse=reverse)
+        elif sort_by_clean in ("eventCount", "event_count"):
+            filtered_cases.sort(key=lambda c: (c.event_count, c.case_id), reverse=reverse)
+        elif sort_by_clean in ("case_id", "caseId"):
+            filtered_cases.sort(key=lambda c: c.case_id, reverse=reverse)
+        else:
+            raise ValidationException(
+                f"Unsupported sort_by field '{sort_by}'. Allowed: durationMinutes, startTime, eventCount, case_id.",
+                details={"sort_by": sort_by},
+            )
+
+        total_cases = len(filtered_cases)
+        total_pages = math.ceil(total_cases / page_size) if total_cases > 0 else 0
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paged_cases = filtered_cases[start_idx:end_idx]
+
+        return PaginatedCasesResponse(
+            total_cases=total_cases,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+            cases=paged_cases,
+        )
+
+    def get_case_detail(self, dataset_id: str, case_id: str) -> CaseDetailResponse:
+        """Retrieves individual patient encounter timeline in strict chronological order."""
+        self.validate_dataset_id(dataset_id)
+        self.validate_case_id(case_id)
+
+        _, events_by_case = self._get_or_load_cases(dataset_id)
+        raw_events = events_by_case.get(case_id)
+        if raw_events is None:
+            raise ResourceNotFoundException(
+                f"Case '{case_id}' not found in dataset '{dataset_id}'.",
+                details={"dataset_id": dataset_id, "case_id": case_id},
+            )
+
+        case_events: List[CaseEvent] = []
+        n_events = len(raw_events)
+        for idx, r in enumerate(raw_events):
+            if "timestamp_ms" in r:
+                ts_ms = int(r["timestamp_ms"])
+                dt = datetime.fromtimestamp(ts_ms / 1000.0, tz=timezone.utc)
+                iso = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+            else:
+                dt = r["dt"]
+                ts_ms = int(dt.timestamp() * 1000)
+                iso = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+            if idx < n_events - 1:
+                next_r = raw_events[idx + 1]
+                next_act = str(next_r["activity"])
+                if "timestamp_ms" in next_r:
+                    next_ms = int(next_r["timestamp_ms"])
+                    elapsed = round((next_ms - ts_ms) / 60000.0, 1)
+                else:
+                    elapsed = round((next_r["dt"] - dt).total_seconds() / 60.0, 1)
+            else:
+                next_act = None
+                elapsed = None
+
+            case_events.append(
+                CaseEvent(
+                    id=f"{case_id}-{idx + 1}",
+                    activity=str(r["activity"]),
+                    timestamp=iso,
+                    timestamp_ms=ts_ms,
+                    event_index=idx + 1,
+                    next_activity=next_act,
+                    elapsed_to_next_minutes=elapsed,
+                    resource=r.get("resource"),
+                    department=r.get("department") or r.get("stage"),
+                    status=r.get("status", "Completed"),
+                    raw_attributes={
+                        k: v for k, v in r.items()
+                        if k not in ("case_id", "activity", "dt", "timestamp_ms", "resource", "department", "stage", "status")
+                    },
+                )
+            )
+
+        start_time = case_events[0].timestamp
+        end_time = case_events[-1].timestamp
+        duration_minutes = round((case_events[-1].timestamp_ms - case_events[0].timestamp_ms) / 60000.0, 1)
+        sla_threshold = DATASET_SLA_BENCHMARKS.get(dataset_id, 196.0)
+        sla_breached = (duration_minutes > sla_threshold)
+        compliance_status = "Non-Compliant" if sla_breached else "Compliant"
+
+        return CaseDetailResponse(
+            case_id=case_id,
+            dataset_id=dataset_id,
+            start_time=start_time,
+            end_time=end_time,
+            duration_minutes=duration_minutes,
+            event_count=len(case_events),
+            variant_key=" → ".join(e.activity for e in case_events),
+            events=case_events,
+            compliance_status=compliance_status,
+            sla_breached=sla_breached,
         )

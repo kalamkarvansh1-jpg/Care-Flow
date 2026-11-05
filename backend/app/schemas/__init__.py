@@ -1,5 +1,11 @@
 """CareFlow Pydantic v2 Schema Definitions."""
 
+from backend.app.schemas.cases import (
+    CaseDetailResponse,
+    CaseEvent,
+    CaseItem,
+    PaginatedCasesResponse,
+)
 from backend.app.schemas.common import (
     ErrorDetail,
     ErrorResponse,
@@ -26,4 +32,8 @@ __all__ = [
     "ActivityTransition",
     "BottleneckItem",
     "DatasetSummaryResponse",
+    "CaseItem",
+    "PaginatedCasesResponse",
+    "CaseEvent",
+    "CaseDetailResponse",
 ]
